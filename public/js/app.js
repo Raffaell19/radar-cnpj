@@ -619,6 +619,8 @@ const App = {
   },
 
   // 4. Módulo Busca Avulsa de Empresas
+  selectedSearchUfs: new Set(),
+
   setupSearch() {
     const btnSearch = document.getElementById('btnSubmitSearch');
     const formSearch = document.getElementById('formSearchFilters');
@@ -631,11 +633,212 @@ const App = {
     if (btnSearch) {
       btnSearch.addEventListener('click', () => this.runSearch());
     }
+
+    // Inicialização do Multi-Select de Estados (UF)
+    this.setupUfMultiSelect();
+
+    // Inicialização do Filtro de Tempo de Abertura
+    this.setupSearchTimeFilter();
+  },
+
+  setupUfMultiSelect() {
+    const estados = [
+      { sigla: 'RS', nome: 'Rio Grande do Sul' },
+      { sigla: 'SC', nome: 'Santa Catarina' },
+      { sigla: 'PR', nome: 'Paraná' },
+      { sigla: 'SP', nome: 'São Paulo' },
+      { sigla: 'RJ', nome: 'Rio de Janeiro' },
+      { sigla: 'MG', nome: 'Minas Gerais' },
+      { sigla: 'ES', nome: 'Espírito Santo' },
+      { sigla: 'BA', nome: 'Bahia' },
+      { sigla: 'GO', nome: 'Goiás' },
+      { sigla: 'DF', nome: 'Distrito Federal' },
+      { sigla: 'MT', nome: 'Mato Grosso' },
+      { sigla: 'MS', nome: 'Mato Grosso do Sul' },
+      { sigla: 'PE', nome: 'Pernambuco' },
+      { sigla: 'CE', nome: 'Ceará' },
+      { sigla: 'MA', nome: 'Maranhão' },
+      { sigla: 'PB', nome: 'Paraíba' },
+      { sigla: 'RN', nome: 'Rio Grande do Norte' },
+      { sigla: 'AL', nome: 'Alagoas' },
+      { sigla: 'PI', nome: 'Piauí' },
+      { sigla: 'SE', nome: 'Sergipe' },
+      { sigla: 'PA', nome: 'Pará' },
+      { sigla: 'AM', nome: 'Amazonas' },
+      { sigla: 'RO', nome: 'Rondônia' },
+      { sigla: 'TO', nome: 'Tocantins' },
+      { sigla: 'AC', nome: 'Acre' },
+      { sigla: 'AP', nome: 'Amapá' },
+      { sigla: 'RR', nome: 'Roraima' }
+    ];
+
+    const listContainer = document.getElementById('searchUfListContainer');
+    const trigger = document.getElementById('searchUfTrigger');
+    const dropdown = document.getElementById('searchUfDropdown');
+    const filterInput = document.getElementById('searchUfFilterInput');
+    const btnClear = document.getElementById('btnSearchUfClear');
+
+    if (!listContainer || !trigger || !dropdown) return;
+
+    // Renderiza lista de estados
+    const renderList = (filtro = '') => {
+      const termo = filtro.trim().toLowerCase();
+      const filtrados = estados.filter(e => e.sigla.toLowerCase().includes(termo) || e.nome.toLowerCase().includes(termo));
+      
+      listContainer.innerHTML = filtrados.map(e => `
+        <label class="uf-option-item">
+          <input type="checkbox" value="${e.sigla}" ${this.selectedSearchUfs.has(e.sigla) ? 'checked' : ''} onchange="App.toggleSearchUf('${e.sigla}', this.checked)">
+          <span><b>${e.sigla}</b> - ${e.nome}</span>
+        </label>
+      `).join('');
+    };
+
+    renderList();
+
+    // Toggle Dropdown
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = dropdown.style.display === 'flex';
+      dropdown.style.display = isOpen ? 'none' : 'flex';
+      trigger.classList.toggle('active', !isOpen);
+      if (!isOpen && filterInput) {
+        setTimeout(() => filterInput.focus(), 50);
+      }
+    });
+
+    // Filtro de texto dentro do dropdown
+    if (filterInput) {
+      filterInput.addEventListener('input', (e) => {
+        renderList(e.target.value);
+      });
+      filterInput.addEventListener('click', (e) => e.stopPropagation());
+    }
+
+    // Botão Limpar
+    if (btnClear) {
+      btnClear.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.selectedSearchUfs.clear();
+        this.renderUfBadges();
+        renderList(filterInput?.value || '');
+      });
+    }
+
+    // Botões de Regiões Rápidas (Sul, Sudeste, etc.)
+    document.querySelectorAll('.btn-region-quick').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const ufs = (btn.dataset.ufs || '').split(',').map(u => u.trim());
+        const allPresent = ufs.every(u => this.selectedSearchUfs.has(u));
+        ufs.forEach(u => {
+          if (allPresent) this.selectedSearchUfs.delete(u);
+          else this.selectedSearchUfs.add(u);
+        });
+        this.renderUfBadges();
+        renderList(filterInput?.value || '');
+      });
+    });
+
+    // Fecha ao clicar fora
+    document.addEventListener('click', (e) => {
+      if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.style.display = 'none';
+        trigger.classList.remove('active');
+      }
+    });
+  },
+
+  toggleSearchUf(sigla, isChecked) {
+    if (isChecked) {
+      this.selectedSearchUfs.add(sigla);
+    } else {
+      this.selectedSearchUfs.delete(sigla);
+    }
+    this.renderUfBadges();
+  },
+
+  removeSearchUf(sigla, event) {
+    if (event) event.stopPropagation();
+    this.selectedSearchUfs.delete(sigla);
+    this.renderUfBadges();
+    const cb = document.querySelector(`#searchUfListContainer input[value="${sigla}"]`);
+    if (cb) cb.checked = false;
+  },
+
+  renderUfBadges() {
+    const container = document.getElementById('searchUfBadgesContainer');
+    const counter = document.getElementById('searchUfBadgeCount');
+    const hiddenInput = document.getElementById('searchSelectUf');
+    if (!container || !counter || !hiddenInput) return;
+
+    if (this.selectedSearchUfs.size === 0) {
+      container.innerHTML = `<span id="searchUfPlaceholder" style="color:var(--ink-3);">Todos os Estados</span>`;
+      counter.textContent = 'Todos';
+      hiddenInput.value = 'todos';
+      return;
+    }
+
+    const arr = Array.from(this.selectedSearchUfs);
+    hiddenInput.value = arr.join(',');
+    counter.textContent = `${arr.length} selecionado(s)`;
+
+    if (arr.length <= 4) {
+      container.innerHTML = arr.map(sigla => `
+        <span class="uf-chip-badge">
+          ${sigla}
+          <span class="chip-remove" onclick="App.removeSearchUf('${sigla}', event)">&times;</span>
+        </span>
+      `).join('');
+    } else {
+      container.innerHTML = `
+        <span class="uf-chip-badge" style="background:var(--accent); color:#fff;">
+          ${arr.length} estados (${arr.slice(0, 3).join(', ')}...)
+        </span>
+      `;
+    }
+  },
+
+  setupSearchTimeFilter() {
+    const preset = document.getElementById('searchSelectDiasPreset');
+    const customBox = document.getElementById('searchCustomDiasBox');
+    const finalInput = document.getElementById('searchDiasAberturaFinal');
+    const numInput = document.getElementById('searchCustomDiasNum');
+    const unitSelect = document.getElementById('searchCustomDiasUnit');
+    const badge = document.getElementById('searchCustomDiasBadge');
+
+    if (!preset || !customBox || !finalInput) return;
+
+    const calcCustom = () => {
+      const num = Math.max(1, parseInt(numInput?.value, 10) || 1);
+      const unit = unitSelect?.value || 'meses';
+      let mult = 1;
+      if (unit === 'meses') mult = 30;
+      else if (unit === 'anos') mult = 365;
+
+      const totalDias = num * mult;
+      if (finalInput) finalInput.value = totalDias;
+      if (badge) badge.textContent = `= ${totalDias} dias`;
+    };
+
+    preset.addEventListener('change', () => {
+      const val = preset.value;
+      if (val === 'custom') {
+        customBox.style.display = 'block';
+        calcCustom();
+      } else {
+        customBox.style.display = 'none';
+        finalInput.value = val;
+      }
+    });
+
+    if (numInput) numInput.addEventListener('input', calcCustom);
+    if (unitSelect) unitSelect.addEventListener('change', calcCustom);
   },
 
   async runSearch(page = 1) {
     const termo = document.getElementById('searchInputTermo')?.value || '';
     const uf = document.getElementById('searchSelectUf')?.value || 'todos';
+    const diasAbertura = document.getElementById('searchDiasAberturaFinal')?.value || 'todos';
     const cnae = document.getElementById('searchInputCnae')?.value || '';
     const cidade = document.getElementById('searchInputCidade')?.value || '';
     const capitalMin = document.getElementById('searchCapitalMin')?.value || '';
@@ -651,8 +854,12 @@ const App = {
       so_celulares: soCelular,
       excluir_mei: semMei,
       pagina: page,
-      por_pagina: 12
+      por_pagina: 15
     });
+
+    if (diasAbertura && diasAbertura !== 'todos') {
+      queryParams.append('dias_abertura', diasAbertura);
+    }
 
     const tbody = document.getElementById('searchResultsTbody');
     const countEl = document.getElementById('searchResultsCount');
@@ -698,8 +905,8 @@ const App = {
             </span>
             <small style="display:block; color:var(--ink-3); font-size:10px;">${emp.porte || 'ME'}</small>
           </td>
-          <td>
-            <span class="badge-tag ${emp.eh_celular ? 'badge-phone' : ''}">
+          <td class="col-telefone" style="white-space: nowrap !important; min-width: 150px;">
+            <span class="badge-tag ${emp.eh_celular ? 'badge-phone' : ''}" style="white-space: nowrap !important; display: inline-flex; align-items: center;">
               ${emp.telefone || 'Telefone não informado'}
             </span>
           </td>

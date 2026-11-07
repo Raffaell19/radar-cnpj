@@ -517,9 +517,18 @@ async function pesquisarEmpresas(filtros = {}) {
     params.push(`%${filtros.cnae}%`, `%${raiz}%`, `%${raiz}%`, `%${raiz}%`);
   }
 
-  if (filtros.uf && filtros.uf !== 'todos' && filtros.uf.trim() !== '' && !isDirectCnpjSearch) {
-    query += ' AND UPPER(uf) = UPPER(?)';
-    params.push(filtros.uf.trim());
+  // Suporte a múltiplos estados (ex: 'RS,SC,PR' ou array ['RS', 'SC', 'PR'])
+  let ufsList = [];
+  if (Array.isArray(filtros.ufs)) {
+    ufsList = filtros.ufs.map(u => String(u).trim().toUpperCase()).filter(u => u && u !== 'TODOS');
+  } else if (filtros.uf && filtros.uf !== 'todos' && filtros.uf.trim() !== '') {
+    ufsList = filtros.uf.split(',').map(u => u.trim().toUpperCase()).filter(u => u && u !== 'TODOS');
+  }
+
+  if (ufsList.length > 0 && !isDirectCnpjSearch) {
+    const placeholders = ufsList.map(() => '?').join(', ');
+    query += ` AND UPPER(uf) IN (${placeholders})`;
+    params.push(...ufsList);
   }
 
   if (filtros.municipio && filtros.municipio !== 'todos' && filtros.municipio.trim() !== '' && !isDirectCnpjSearch) {

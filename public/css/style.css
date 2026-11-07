@@ -804,11 +804,14 @@ table.data-table tr:hover {
 }
 
 .badge-tag {
-  display: inline-block;
-  padding: 3px 8px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 500;
+  white-space: nowrap !important;
+  word-break: keep-all;
 }
 
 .badge-tag.badge-active {
@@ -819,6 +822,102 @@ table.data-table tr:hover {
 .badge-tag.badge-phone {
   background: rgba(127, 196, 255, 0.14);
   color: var(--sky);
+  white-space: nowrap !important;
+  word-break: keep-all;
+  letter-spacing: 0.02em;
+}
+
+table.data-table td.col-telefone,
+table.data-table th.col-telefone,
+table.data-table td:nth-child(5) {
+  white-space: nowrap !important;
+  min-width: 150px;
+}
+
+/* Multi-Select Dropdown para Estados */
+.multi-select-wrapper {
+  position: relative;
+}
+
+.multi-select-trigger {
+  min-height: 42px;
+  background: rgba(2, 14, 56, 0.7);
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.multi-select-trigger:focus,
+.multi-select-trigger.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(47, 114, 245, 0.2);
+}
+
+.uf-chip-badge {
+  background: rgba(47, 114, 245, 0.25);
+  color: var(--sky);
+  border: 1px solid rgba(47, 114, 245, 0.4);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.uf-chip-badge .chip-remove {
+  cursor: pointer;
+  color: var(--ink-3);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.uf-chip-badge .chip-remove:hover {
+  color: #fff;
+}
+
+.btn-region-quick {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hair);
+  color: var(--ink-2);
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.15s;
+}
+
+.btn-region-quick:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.uf-option-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--ink-1);
+  transition: background 0.12s;
+}
+
+.uf-option-item:hover {
+  background: rgba(47, 114, 245, 0.15);
+}
+
+.uf-option-item input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
 }
 
 /* ==================== CRM KANBAN MODULE ==================== */

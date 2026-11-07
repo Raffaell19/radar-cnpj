@@ -195,20 +195,54 @@
                 <input type="text" id="searchInputCnae" class="form-control" placeholder="Ex: Odontologia, Restaurante, TI...">
               </div>
 
+              <!-- Multi-Seleção de Estados (UF) -->
+              <div class="form-group multi-select-wrapper" id="searchUfWrapper" style="position: relative;">
+                <label style="display:flex; justify-content:space-between; align-items:center;">
+                  <span>Estados (UF)</span>
+                  <small id="searchUfBadgeCount" style="color:var(--sky); font-weight:600; font-size:11px;">Todos</small>
+                </label>
+                <div id="searchUfTrigger" class="multi-select-trigger" tabindex="0" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none;">
+                  <div id="searchUfBadgesContainer" style="display:flex; gap:4px; flex-wrap:wrap; align-items:center; max-height:28px; overflow:hidden;">
+                    <span id="searchUfPlaceholder" style="color:var(--ink-3);">Todos os Estados</span>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; margin-left:6px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                
+                <!-- Dropdown Flutuante de Seleção Múltipla -->
+                <div id="searchUfDropdown" class="multi-select-dropdown" style="display:none; position:absolute; top:calc(100% + 4px); left:0; width:100%; min-width:270px; background:#04154a; border:1px solid var(--hair); border-radius:8px; z-index:9999; box-shadow:0 12px 30px rgba(0,0,0,0.6); overflow:hidden; flex-direction:column;">
+                  <div style="padding:8px; border-bottom:1px solid var(--hair-2); display:flex; gap:6px;">
+                    <input type="text" id="searchUfFilterInput" class="form-control form-control-sm" placeholder="Filtrar estado..." style="font-size:12px; padding:4px 8px;">
+                    <button type="button" id="btnSearchUfClear" class="btn btn-quiet btn-sm" style="padding:4px 8px; font-size:11px;">Limpar</button>
+                  </div>
+                  <div style="padding:6px 8px; border-bottom:1px solid var(--hair-2); display:flex; gap:4px; flex-wrap:wrap; font-size:11px; align-items:center;">
+                    <span style="color:var(--ink-3); font-size:10px;">Regiões:</span>
+                    <button type="button" class="btn-region-quick" data-ufs="RS,SC,PR">Sul</button>
+                    <button type="button" class="btn-region-quick" data-ufs="SP,RJ,MG,ES">Sudeste</button>
+                    <button type="button" class="btn-region-quick" data-ufs="DF,GO,MT,MS">Centro-Oeste</button>
+                    <button type="button" class="btn-region-quick" data-ufs="BA,PE,CE,MA,PB,RN,AL,SE,PI">Nordeste</button>
+                  </div>
+                  <div id="searchUfListContainer" style="overflow-y:auto; max-height:220px; padding:4px;">
+                    <!-- Preenchido via JavaScript com todos os 27 estados -->
+                  </div>
+                </div>
+                <input type="hidden" id="searchSelectUf" value="todos">
+              </div>
+
+              <!-- Filtro de Tempo de Abertura -->
               <div class="form-group">
-                <label>Estado (UF)</label>
-                <select id="searchSelectUf" class="form-control">
-                  <option value="todos">Todos os Estados</option>
-                  <option value="PR">PR - Paraná</option>
-                  <option value="SP">SP - São Paulo</option>
-                  <option value="SC">SC - Santa Catarina</option>
-                  <option value="RS">RS - Rio Grande do Sul</option>
-                  <option value="RJ">RJ - Rio de Janeiro</option>
-                  <option value="MG">MG - Minas Gerais</option>
-                  <option value="GO">GO - Goiás</option>
-                  <option value="BA">BA - Bahia</option>
-                  <option value="DF">DF - Distrito Federal</option>
+                <label>Tempo de Abertura</label>
+                <select id="searchSelectDiasPreset" class="form-control">
+                  <option value="todos">Qualquer Data (Todas)</option>
+                  <option value="7">Últimos 7 dias (1 semana)</option>
+                  <option value="15">Últimos 15 dias</option>
+                  <option value="30">Últimos 30 dias (1 mês)</option>
+                  <option value="60">Últimos 60 dias (2 meses)</option>
+                  <option value="90">Últimos 90 dias (3 meses)</option>
+                  <option value="180">Últimos 180 dias (6 meses)</option>
+                  <option value="365">Último 1 ano (12 meses)</option>
+                  <option value="custom">Personalizado...</option>
                 </select>
+                <input type="hidden" id="searchDiasAberturaFinal" value="todos">
               </div>
 
               <div class="form-group">
@@ -219,6 +253,20 @@
               <div class="form-group">
                 <label>Capital Social Mínimo</label>
                 <input type="number" id="searchCapitalMin" class="form-control" placeholder="R$ 10.000" step="1000">
+              </div>
+            </div>
+
+            <!-- Painel de Tempo Personalizado (Exibido se escolher 'Personalizado...') -->
+            <div id="searchCustomDiasBox" style="display:none; background:rgba(47,114,245,0.08); border:1px solid rgba(47,114,245,0.25); border-radius:8px; padding:10px 14px; margin-bottom:16px;">
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <span style="font-size:12px; color:var(--ink-2);">Empresas abertas nos últimos:</span>
+                <input type="number" id="searchCustomDiasNum" class="form-control" style="width:85px; padding:6px 10px;" min="1" value="6">
+                <select id="searchCustomDiasUnit" class="form-control" style="width:110px; padding:6px 10px;">
+                  <option value="dias">Dias</option>
+                  <option value="meses" selected>Meses</option>
+                  <option value="anos">Anos</option>
+                </select>
+                <span id="searchCustomDiasBadge" class="badge-tag" style="background:var(--accent); color:#fff; font-size:11px; font-weight:600;">= 180 dias</span>
               </div>
             </div>
 
@@ -260,7 +308,7 @@
                     <th>Localização</th>
                     <th>Atividade Principal</th>
                     <th>Capital Social</th>
-                    <th>Telefone</th>
+                    <th class="col-telefone" style="white-space: nowrap !important; min-width: 150px;">Telefone</th>
                     <th style="text-align:right;">Ações</th>
                   </tr>
                 </thead>
