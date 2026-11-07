@@ -1,5 +1,6 @@
 const { db } = require('../database');
 const { CNAE_LIST } = require('../seed');
+const { pesquisarEmpresasSupabase, salvarEmpresasSupabase } = require('./supabaseClient');
 
 function calcDvCnpj(base12) {
   const calc = (str, w) => {
@@ -423,6 +424,34 @@ function salvarEmpresaNoBanco(emp) {
     emp.socio_cargo,
     JSON.stringify(emp.quadro_societario || [])
   );
+
+  // Sincroniza em background com o Supabase
+  salvarEmpresasSupabase([{
+    cnpj: emp.cnpj,
+    razao_social: emp.razao_social,
+    nome_fantasia: emp.nome_fantasia || '',
+    situacao_cadastral: emp.situacao_cadastral || 'ATIVA',
+    cnae_codigo: emp.cnae_codigo,
+    cnae_descricao: emp.cnae_descricao,
+    capital_social: Number(emp.capital_social) || 0,
+    porte: emp.porte || 'ME',
+    natureza_juridica: emp.natureza_juridica,
+    uf: emp.uf,
+    municipio: emp.municipio,
+    bairro: emp.bairro,
+    logradouro: emp.logradouro,
+    numero: emp.numero,
+    cep: emp.cep,
+    ddd: emp.ddd,
+    telefone: emp.telefone,
+    eh_celular: emp.eh_celular ? 1 : 0,
+    email: emp.email,
+    eh_mei: emp.eh_mei ? 1 : 0,
+    data_abertura: emp.data_abertura || null,
+    socio_nome: emp.socio_nome,
+    socio_cargo: emp.socio_cargo,
+    quadro_societario: emp.quadro_societario || []
+  }]).catch(() => {});
 }
 
 async function getLiveStats() {
@@ -492,6 +521,18 @@ async function pesquisarEmpresas(filtros = {}) {
       }
     } catch (e) {
       console.warn('[CNPJ Engine] Consulta federal ao vivo falhou:', e.message);
+    }
+  }
+
+  // 1. Tenta consultar primeiro no Supabase se não for busca direta por dígitos de CNPJ
+  if (!isDirectCnpjSearch) {
+    try {
+      const resSupabase = await pesquisarEmpresasSupabase(filtros);
+      if (resSupabase && resSupabase.empresas && resSupabase.empresas.length > 0) {
+        return resSupabase;
+      }
+    } catch (eSupabase) {
+      // Fallback para SQLite local
     }
   }
 
