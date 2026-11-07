@@ -11,7 +11,8 @@ const LocalStore = {
   KEYS: {
     LEADS: 'radar_leads_v2',
     RADARES: 'radar_radares_v2',
-    HISTORICO: 'radar_historico_v2'
+    HISTORICO: 'radar_historico_v2',
+    BUSCAS: 'radar_buscas_v1'
   },
 
   getLeads() {
@@ -75,6 +76,58 @@ const LocalStore = {
       });
       localStorage.setItem(this.KEYS.HISTORICO, JSON.stringify(all.slice(0, 1000)));
     } catch (e) {}
+  },
+
+  getHistoricoBuscas() {
+    try {
+      const raw = localStorage.getItem(this.KEYS.BUSCAS);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.warn('Erro ao ler histórico de buscas:', e);
+      return [];
+    }
+  },
+
+  saveHistoricoBuscas(buscas) {
+    try {
+      localStorage.setItem(this.KEYS.BUSCAS, JSON.stringify(buscas));
+    } catch (e) {
+      console.warn('Erro ao salvar histórico de buscas:', e);
+    }
+  },
+
+  addBusca(item) {
+    try {
+      const buscas = this.getHistoricoBuscas();
+      // Se já existir busca com o mesmo título salva nos últimos 20 segundos, atualiza
+      const existingIndex = buscas.findIndex(b => b.id === item.id || (b.titulo === item.titulo && Math.abs(new Date(b.criado_iso || 0) - new Date(item.criado_iso || 0)) < 20000));
+      if (existingIndex >= 0) {
+        buscas[existingIndex] = item;
+      } else {
+        buscas.unshift(item);
+      }
+      this.saveHistoricoBuscas(buscas.slice(0, 50));
+    } catch (e) {
+      console.warn('Erro ao adicionar busca no histórico:', e);
+    }
+  },
+
+  deleteBusca(id) {
+    const buscas = this.getHistoricoBuscas().filter(b => String(b.id) !== String(id));
+    this.saveHistoricoBuscas(buscas);
+  },
+
+  renameBusca(id, novoTitulo) {
+    const buscas = this.getHistoricoBuscas();
+    const b = buscas.find(item => String(item.id) === String(id));
+    if (b) {
+      b.titulo = novoTitulo;
+      this.saveHistoricoBuscas(buscas);
+    }
+  },
+
+  clearHistoricoBuscas() {
+    this.saveHistoricoBuscas([]);
   }
 };
 
@@ -92,6 +145,7 @@ const App = {
     this.setupModals();
     this.setupSearch();
     this.setupRadarForm();
+    this.updateHistoricoBadgeCount();
     await this.loadLiveStats();
     await this.loadRadars();
     await this.loadCrm();
@@ -883,54 +937,428 @@ const App = {
         return;
       }
 
-      tbody.innerHTML = data.empresas.map(emp => `
-        <tr>
-          <td>
-            <b style="color:#fff; display:block;">${emp.razao_social}</b>
-            <span style="font-size:11px; color:var(--ink-3); font-family:var(--mono);">${emp.cnpj}</span>
-          </td>
-          <td>
-            <span style="color:var(--sky); font-size:12px;">${emp.municipio || '—'}/${emp.uf || '—'}</span>
-            <small style="display:block; color:var(--ink-3); font-size:11px;">${emp.bairro || 'Bairro não informado'}</small>
-          </td>
-          <td>
-            <span style="font-size:12px; color:var(--ink-2); display:block; max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-              ${emp.cnae_descricao || 'Atividade não informada'}
-            </span>
-            <small style="color:var(--ink-3); font-family:var(--mono); font-size:10px;">CNAE ${emp.cnae_codigo || '—'}</small>
-          </td>
-          <td>
-            <span style="color:var(--ink-1); font-weight:550; font-variant-numeric:tabular-nums;">
-              R$ ${Number(emp.capital_social).toLocaleString('pt-BR')}
-            </span>
-            <small style="display:block; color:var(--ink-3); font-size:10px;">${emp.porte || 'ME'}</small>
-          </td>
-          <td class="col-telefone" style="white-space: nowrap !important; min-width: 150px;">
-            <span class="badge-tag ${emp.eh_celular ? 'badge-phone' : ''}" style="white-space: nowrap !important; display: inline-flex; align-items: center;">
-              ${emp.telefone || 'Telefone não informado'}
-            </span>
-          </td>
-          <td style="text-align:right;">
-            <div style="display:inline-flex; gap:6px;">
-              <button class="btn btn-quiet btn-sm" onclick="App.openCompanyDetails('${emp.cnpj}')" title="Abrir Raio-X completo e investigação online (Google Maps, Redes Sociais, Sócios)">
-                Detalhes
-              </button>
-              <button class="btn btn-quiet btn-sm" onclick="App.openCompanyModal('${emp.cnpj}')" title="Ver ficha cadastral da Receita Federal">
-                Ficha
-              </button>
-              <button class="btn btn-solid btn-sm" onclick="App.importToCrm('${emp.cnpj}')" title="Adicionar ao CRM">
-                + CRM
-              </button>
-              <button class="btn btn-whatsapp btn-sm" onclick="App.openWaModalFromCompany('${emp.cnpj}')" title="Disparo WhatsApp">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-              </button>
-            </div>
-          </td>
-        </tr>
-      `).join('');
+      this.renderSearchResultsTable(data.empresas);
+
+      // Salva automaticamente a pesquisa como pasta no histórico
+      const partes = [];
+      if (cnae) partes.push(cnae);
+      if (termo) partes.push(`"${termo}"`);
+      if (uf && uf !== 'todos') partes.push(uf.replace(/,/g, ', '));
+      if (cidade) partes.push(cidade);
+      if (diasAbertura && diasAbertura !== 'todos') partes.push(`Últimos ${diasAbertura} dias`);
+      const tituloAuto = partes.length > 0 ? partes.join(' · ') : 'Pesquisa Geral de Empresas';
+
+      const registroBusca = {
+        id: Date.now(),
+        titulo: tituloAuto,
+        filtros: { termo, uf, diasAbertura, cnae, cidade, capitalMin, soCelular, semMei },
+        total: data.total || data.empresas.length,
+        empresas: data.empresas,
+        criado_em: new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        criado_iso: new Date().toISOString()
+      };
+
+      LocalStore.addBusca(registroBusca);
+      this.updateHistoricoBadgeCount();
+      if (document.getElementById('panelHistoricoBuscas')?.style.display !== 'none') {
+        this.renderHistoricoBuscas();
+      }
     } catch (err) {
       console.error('Erro na pesquisa:', err);
     }
+  },
+
+  renderSearchResultsTable(empresas) {
+    const tbody = document.getElementById('searchResultsTbody');
+    if (!tbody) return;
+    if (!empresas || !empresas.length) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--ink-3);">Nenhuma empresa encontrada.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = empresas.map(emp => `
+      <tr>
+        <td>
+          <b style="color:#fff; display:block;">${emp.razao_social}</b>
+          <span style="font-size:11px; color:var(--ink-3); font-family:var(--mono);">${emp.cnpj}</span>
+        </td>
+        <td>
+          <span style="color:var(--sky); font-size:12px;">${emp.municipio || '—'}/${emp.uf || '—'}</span>
+          <small style="display:block; color:var(--ink-3); font-size:11px;">${emp.bairro || 'Bairro não informado'}</small>
+        </td>
+        <td>
+          <span style="font-size:12px; color:var(--ink-2); display:block; max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${emp.cnae_descricao || 'Atividade não informada'}
+          </span>
+          <small style="color:var(--ink-3); font-family:var(--mono); font-size:10px;">CNAE ${emp.cnae_codigo || '—'}</small>
+        </td>
+        <td>
+          <span style="color:var(--ink-1); font-weight:550; font-variant-numeric:tabular-nums;">
+            R$ ${Number(emp.capital_social || 0).toLocaleString('pt-BR')}
+          </span>
+          <small style="display:block; color:var(--ink-3); font-size:10px;">${emp.porte || 'ME'}</small>
+        </td>
+        <td class="col-telefone" style="white-space: nowrap !important; min-width: 150px;">
+          <span class="badge-tag ${emp.eh_celular ? 'badge-phone' : ''}" style="white-space: nowrap !important; display: inline-flex; align-items: center;">
+            ${emp.telefone || 'Telefone não informado'}
+          </span>
+        </td>
+        <td style="text-align:right;">
+          <div style="display:inline-flex; gap:6px;">
+            <button class="btn btn-quiet btn-sm" onclick="App.openCompanyDetails('${emp.cnpj}')" title="Abrir Raio-X completo e investigação online (Google Maps, Redes Sociais, Sócios)">
+              Detalhes
+            </button>
+            <button class="btn btn-quiet btn-sm" onclick="App.openCompanyModal('${emp.cnpj}')" title="Ver ficha cadastral da Receita Federal">
+              Ficha
+            </button>
+            <button class="btn btn-solid btn-sm" onclick="App.importToCrm('${emp.cnpj}')" title="Adicionar ao CRM">
+              + CRM
+            </button>
+            <button class="btn btn-whatsapp btn-sm" onclick="App.openWaModalFromCompany('${emp.cnpj}')" title="Disparo WhatsApp">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  },
+
+  // ==================== MÓDULO DE PASTAS & HISTÓRICO DE BUSCAS ====================
+  toggleHistoricoPanel() {
+    const panel = document.getElementById('panelHistoricoBuscas');
+    if (!panel) return;
+    const isHidden = panel.style.display === 'none' || !panel.style.display;
+    panel.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) {
+      this.renderHistoricoBuscas();
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  },
+
+  updateHistoricoBadgeCount() {
+    const buscas = LocalStore.getHistoricoBuscas();
+    const count = buscas.length;
+    const badge = document.getElementById('badgeHistoricoCount');
+    if (badge) badge.textContent = count;
+    const tag = document.getElementById('historicoTotalSalvasTag');
+    if (tag) tag.textContent = `${count} ${count === 1 ? 'pasta salva' : 'pastas salvas'}`;
+  },
+
+  filtrarCardsHistorico(texto) {
+    this.renderHistoricoBuscas(texto);
+  },
+
+  renderHistoricoBuscas(filtroTexto = '') {
+    const container = document.getElementById('historicoBuscasList');
+    if (!container) return;
+
+    let buscas = LocalStore.getHistoricoBuscas();
+    this.updateHistoricoBadgeCount();
+
+    if (filtroTexto && filtroTexto.trim()) {
+      const q = filtroTexto.toLowerCase().trim();
+      buscas = buscas.filter(b => {
+        const tit = (b.titulo || '').toLowerCase();
+        const uf = (b.filtros?.uf || '').toLowerCase();
+        const cnae = (b.filtros?.cnae || '').toLowerCase();
+        const termo = (b.filtros?.termo || '').toLowerCase();
+        const data = (b.criado_em || '').toLowerCase();
+        return tit.includes(q) || uf.includes(q) || cnae.includes(q) || termo.includes(q) || data.includes(q);
+      });
+    }
+
+    if (!buscas.length) {
+      container.innerHTML = `
+        <div class="folder-empty-state">
+          <div style="font-size: 32px; margin-bottom: 8px;">📁</div>
+          <p style="font-weight: 600; color: #fff; margin-bottom: 4px;">Nenhuma pasta de pesquisa ${filtroTexto ? 'encontrada para o filtro' : 'salva ainda'}.</p>
+          <p style="font-size: 12px; color: var(--ink-3); max-width: 460px; margin: 0 auto;">
+            ${filtroTexto ? 'Tente buscar com outro termo.' : 'Todas as pesquisas que você fizer serão guardadas aqui automaticamente como pastas organizadas com todos os leads gravados, prontas para recarga instantânea ou exportação.'}
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = buscas.map(b => {
+      const f = b.filtros || {};
+      const totalLeads = b.empresas ? b.empresas.length : 0;
+      const totalBase = b.total || totalLeads;
+
+      const badges = [];
+      if (f.uf && f.uf !== 'todos') {
+        badges.push(`<span class="folder-badge-item">📍 <strong>${f.uf}</strong></span>`);
+      } else {
+        badges.push(`<span class="folder-badge-item">📍 <strong>Brasil</strong></span>`);
+      }
+
+      if (f.cnae) {
+        badges.push(`<span class="folder-badge-item">💼 <strong>${f.cnae}</strong></span>`);
+      }
+      if (f.termo) {
+        badges.push(`<span class="folder-badge-item">🔎 <strong>"${f.termo}"</strong></span>`);
+      }
+      if (f.diasAbertura && f.diasAbertura !== 'todos') {
+        badges.push(`<span class="folder-badge-item">⏱️ <strong>${f.diasAbertura} dias</strong></span>`);
+      }
+      if (f.soCelular == 1) {
+        badges.push(`<span class="folder-badge-item" style="color:#25d07e;">📱 <strong>Celular</strong></span>`);
+      }
+
+      return `
+        <div class="search-folder-card" id="folderCard_${b.id}">
+          <div class="folder-top-row">
+            <div class="folder-name-wrap" title="Clique para renomear" onclick="App.promptRenameBusca('${b.id}')">
+              <span class="folder-icon">📁</span>
+              <h4 class="folder-title">${b.titulo}</h4>
+              <span style="font-size:11px; opacity:0.6; cursor:pointer;" title="Renomear pasta">✏️</span>
+            </div>
+            <span class="folder-date">${b.criado_em}</span>
+          </div>
+
+          <div class="folder-badges-row">
+            ${badges.join('')}
+          </div>
+
+          <div class="folder-leads-info">
+            <span class="folder-leads-count">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              ${totalLeads} leads salvos
+            </span>
+            <span class="folder-base-total">de ${Number(totalBase).toLocaleString('pt-BR')} na base</span>
+          </div>
+
+          <div class="folder-actions-row">
+            <button type="button" class="btn btn-solid btn-sm" onclick="App.carregarBuscaSalva('${b.id}')" title="Carregar estes ${totalLeads} leads diretamente na tabela de busca">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              Ver Leads (${totalLeads})
+            </button>
+            <button type="button" class="btn btn-quiet btn-sm" onclick="App.exportarBuscaSalvaCsv('${b.id}')" title="Exportar planilha CSV/Excel desta pasta">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              CSV
+            </button>
+            <button type="button" class="btn btn-quiet btn-sm btn-delete" onclick="App.excluirBuscaSalva('${b.id}')" title="Excluir esta pasta do histórico">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  carregarBuscaSalva(id) {
+    const buscas = LocalStore.getHistoricoBuscas();
+    const busca = buscas.find(b => String(b.id) === String(id));
+    if (!busca) {
+      this.showToast('Pasta de pesquisa não encontrada.');
+      return;
+    }
+
+    const empresas = busca.empresas || [];
+    this.currentSearchResults = empresas;
+
+    // Atualiza tabela de resultados
+    this.renderSearchResultsTable(empresas);
+
+    // Atualiza cabeçalho da tabela
+    const countEl = document.getElementById('searchResultsCount');
+    if (countEl) {
+      countEl.innerHTML = `<span style="color:var(--sky); font-weight:600;">📁 Pasta Ativa:</span> "${busca.titulo}" — <strong>${empresas.length}</strong> leads gravados (${(busca.total || empresas.length).toLocaleString('pt-BR')} na base)`;
+    }
+
+    // Exibe botão de exportar
+    const btnExport = document.getElementById('btnExportSearchCsv');
+    if (btnExport) {
+      btnExport.style.display = empresas.length > 0 ? 'inline-flex' : 'none';
+    }
+
+    // Restaura visualmente os filtros no formulário
+    const f = busca.filtros || {};
+    if (document.getElementById('searchInputTermo')) document.getElementById('searchInputTermo').value = f.termo || '';
+    if (document.getElementById('searchInputCnae')) document.getElementById('searchInputCnae').value = f.cnae || '';
+    if (document.getElementById('searchInputCidade')) document.getElementById('searchInputCidade').value = f.cidade || '';
+    if (document.getElementById('searchCapitalMin')) document.getElementById('searchCapitalMin').value = f.capitalMin || '';
+    if (document.getElementById('searchCheckCelular')) document.getElementById('searchCheckCelular').checked = f.soCelular == 1;
+    if (document.getElementById('searchCheckSemMei')) document.getElementById('searchCheckSemMei').checked = f.semMei == 1;
+
+    // Restaura UFs selecionadas
+    const ufStr = f.uf || 'todos';
+    this.selectedSearchUfs.clear();
+    if (ufStr && ufStr !== 'todos') {
+      ufStr.split(',').forEach(sigla => {
+        if (sigla.trim()) this.selectedSearchUfs.add(sigla.trim().toUpperCase());
+      });
+    }
+    const hiddenUf = document.getElementById('searchSelectUf');
+    if (hiddenUf) hiddenUf.value = this.selectedSearchUfs.size > 0 ? Array.from(this.selectedSearchUfs).join(',') : 'todos';
+    this.renderUfBadges();
+    document.querySelectorAll('.uf-item-row input[type="checkbox"]').forEach(chk => {
+      chk.checked = this.selectedSearchUfs.has(chk.value);
+    });
+
+    // Restaura tempo de abertura
+    const dias = f.diasAbertura || 'todos';
+    const presetSelect = document.getElementById('searchSelectDiasPreset');
+    const finalInput = document.getElementById('searchDiasAberturaFinal');
+    const customBox = document.getElementById('searchCustomDiasBox');
+    if (finalInput) finalInput.value = dias;
+    if (presetSelect) {
+      const match = Array.from(presetSelect.options).find(opt => opt.value === String(dias));
+      if (match) {
+        presetSelect.value = String(dias);
+        if (customBox) customBox.style.display = 'none';
+      } else if (dias !== 'todos') {
+        presetSelect.value = 'custom';
+        if (customBox) {
+          customBox.style.display = 'block';
+          const numInput = document.getElementById('searchCustomDiasNum');
+          const unitSelect = document.getElementById('searchCustomDiasUnit');
+          const badge = document.getElementById('searchCustomDiasBadge');
+          if (numInput) numInput.value = dias;
+          if (unitSelect) unitSelect.value = 'dias';
+          if (badge) badge.textContent = `= ${dias} dias`;
+        }
+      } else {
+        presetSelect.value = 'todos';
+        if (customBox) customBox.style.display = 'none';
+      }
+    }
+
+    // Feedback visual
+    this.showToast(`Pasta "${busca.titulo}" carregada com ${empresas.length} leads!`);
+
+    // Rolagem suave até a tabela
+    countEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  },
+
+  exportarBuscaSalvaCsv(id) {
+    const buscas = LocalStore.getHistoricoBuscas();
+    const busca = buscas.find(b => String(b.id) === String(id));
+    if (!busca || !busca.empresas || !busca.empresas.length) {
+      this.showToast('Nenhum lead nesta pasta para exportar.');
+      return;
+    }
+
+    const empresas = busca.empresas;
+    const headers = [
+      'CNPJ',
+      'Razao Social',
+      'Nome Fantasia',
+      'Situacao',
+      'Telefone',
+      'Contato/Socio',
+      'Municipio',
+      'UF',
+      'CNAE Codigo',
+      'CNAE Descricao',
+      'Capital Social',
+      'Data Abertura'
+    ];
+
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const rows = empresas.map(e => [
+      escapeCsv(e.cnpj),
+      escapeCsv(e.razao_social),
+      escapeCsv(e.nome_fantasia || ''),
+      escapeCsv(e.situacao_cadastral || 'ATIVA'),
+      escapeCsv(e.telefone || ''),
+      escapeCsv(e.socio_nome || ''),
+      escapeCsv(e.municipio || ''),
+      escapeCsv(e.uf || ''),
+      escapeCsv(e.cnae_codigo || ''),
+      escapeCsv(e.cnae_descricao || ''),
+      escapeCsv(e.capital_social || 0),
+      escapeCsv(e.data_abertura || '')
+    ].join(';'));
+
+    const csvContent = '\uFEFF' + headers.join(';') + '\n' + rows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const safeTitle = (busca.titulo || 'leads').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase().substring(0, 30);
+    const dataHoje = new Date().toISOString().split('T')[0];
+    a.href = url;
+    a.download = `pasta_${safeTitle}_${dataHoje}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    this.showToast(`Exportação da pasta concluída! (${empresas.length} leads baixados)`);
+  },
+
+  excluirBuscaSalva(id) {
+    if (!confirm('Deseja realmente excluir esta pasta do histórico?')) return;
+    LocalStore.deleteBusca(id);
+    this.renderHistoricoBuscas();
+    this.updateHistoricoBadgeCount();
+    this.showToast('Pasta excluída do histórico.');
+  },
+
+  promptRenameBusca(id) {
+    const buscas = LocalStore.getHistoricoBuscas();
+    const busca = buscas.find(b => String(b.id) === String(id));
+    if (!busca) return;
+    const novoNome = prompt('Digite o novo nome para esta pasta:', busca.titulo);
+    if (novoNome && novoNome.trim() && novoNome.trim() !== busca.titulo) {
+      LocalStore.renameBusca(id, novoNome.trim());
+      this.renderHistoricoBuscas();
+      this.showToast('Pasta renomeada com sucesso!');
+    }
+  },
+
+  salvarBuscaAtualComoPasta() {
+    if (!this.currentSearchResults || !this.currentSearchResults.length) {
+      this.showToast('Faça uma pesquisa com resultados antes de salvar em pasta.');
+      return;
+    }
+
+    const nomeSugerido = document.getElementById('searchInputCnae')?.value || document.getElementById('searchInputTermo')?.value || 'Minha Pasta de Leads';
+    const nome = prompt('Digite o nome para esta nova pasta de leads:', nomeSugerido);
+    if (!nome || !nome.trim()) return;
+
+    const termo = document.getElementById('searchInputTermo')?.value || '';
+    const uf = document.getElementById('searchSelectUf')?.value || 'todos';
+    const diasAbertura = document.getElementById('searchDiasAberturaFinal')?.value || 'todos';
+    const cnae = document.getElementById('searchInputCnae')?.value || '';
+    const cidade = document.getElementById('searchInputCidade')?.value || '';
+    const capitalMin = document.getElementById('searchCapitalMin')?.value || '';
+    const soCelular = document.getElementById('searchCheckCelular')?.checked ? 1 : 0;
+    const semMei = document.getElementById('searchCheckSemMei')?.checked ? 1 : 0;
+
+    const novaBusca = {
+      id: Date.now(),
+      titulo: nome.trim(),
+      filtros: { termo, uf, diasAbertura, cnae, cidade, capitalMin, soCelular, semMei },
+      total: this.currentSearchResults.length,
+      empresas: this.currentSearchResults,
+      criado_em: new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      criado_iso: new Date().toISOString()
+    };
+
+    LocalStore.addBusca(novaBusca);
+    this.updateHistoricoBadgeCount();
+    const panel = document.getElementById('panelHistoricoBuscas');
+    if (panel) panel.style.display = 'block';
+    this.renderHistoricoBuscas();
+    this.showToast(`Pasta "${nome.trim()}" salva com sucesso com ${this.currentSearchResults.length} leads!`);
+  },
+
+  limparHistoricoBuscas() {
+    const buscas = LocalStore.getHistoricoBuscas();
+    if (!buscas.length) {
+      this.showToast('O histórico de pastas já está vazio.');
+      return;
+    }
+    if (!confirm(`Deseja realmente excluir todas as ${buscas.length} pastas salvas do seu histórico?`)) return;
+    LocalStore.clearHistoricoBuscas();
+    this.updateHistoricoBadgeCount();
+    this.renderHistoricoBuscas();
+    this.showToast('Histórico de pesquisas limpo.');
   },
 
   async importToCrm(cnpj) {

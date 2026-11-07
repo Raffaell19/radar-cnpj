@@ -1663,3 +1663,219 @@ table.data-table td:nth-child(5) {
   gap: 12px;
 }
 
+/* ========================================================
+   PAINEL DE PASTAS & HISTÓRICO DE BUSCAS
+   ======================================================== */
+.historico-buscas-panel {
+  background: rgba(3, 23, 90, 0.65);
+  border: 1px solid rgba(127, 196, 255, 0.22);
+  border-radius: var(--radius-lg, 12px);
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  animation: fadeInDown 0.25s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.historico-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(127, 196, 255, 0.12);
+}
+
+.historico-header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.folder-header-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(47, 114, 245, 0.2);
+  border: 1px solid rgba(127, 196, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sky);
+  flex-shrink: 0;
+}
+
+.historico-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.historico-filter-bar {
+  margin: 14px 0 16px 0;
+}
+
+.historico-filter-bar input {
+  max-width: 400px;
+  background: rgba(2, 14, 56, 0.7);
+  border: 1px solid rgba(127, 196, 255, 0.2);
+}
+
+.historico-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 14px;
+}
+
+/* Card Individual de Pasta / Pesquisa */
+.search-folder-card {
+  background: rgba(2, 14, 56, 0.85);
+  border: 1px solid rgba(127, 196, 255, 0.16);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.search-folder-card:hover {
+  border-color: rgba(127, 196, 255, 0.38);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+.folder-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.folder-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.folder-icon {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.folder-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.folder-title:hover {
+  color: var(--sky);
+  text-decoration: underline;
+}
+
+.folder-date {
+  font-size: 11px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  font-family: var(--mono);
+}
+
+.folder-badges-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.folder-badge-item {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: rgba(127, 196, 255, 0.08);
+  border: 1px solid rgba(127, 196, 255, 0.16);
+  color: var(--ink-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.folder-badge-item strong {
+  color: var(--sky);
+}
+
+.folder-leads-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(47, 114, 245, 0.07);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.folder-leads-count {
+  color: #25d07e;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.folder-base-total {
+  color: var(--ink-3);
+  font-size: 11px;
+}
+
+.folder-actions-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.folder-actions-row .btn {
+  flex: 1;
+  font-size: 12px;
+  padding: 6px 10px;
+  justify-content: center;
+}
+
+.folder-actions-row .btn-delete {
+  flex: 0 0 auto;
+  color: #ff6b6b;
+  padding: 6px 9px;
+}
+
+.folder-empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 36px 20px;
+  background: rgba(2, 14, 56, 0.5);
+  border-radius: 8px;
+  border: 1px dashed rgba(127, 196, 255, 0.2);
+  color: var(--ink-2);
+}
+
+

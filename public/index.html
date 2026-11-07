@@ -177,9 +177,55 @@
 
       <!-- ==================== TAB 3: BUSCA AVULSA DE EMPRESAS ==================== -->
       <section id="view-search" class="view-section">
-        <div class="section-title" style="margin-bottom: 20px;">
-          <h2>Busca Avulsa de Empresas</h2>
-          <p>Filtre qualquer CNPJ do Brasil por atividade, localização, capital social e porte.</p>
+        <div class="section-title" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+          <div>
+            <h2>Busca Avulsa de Empresas</h2>
+            <p>Filtre qualquer CNPJ do Brasil por atividade, localização, capital social e porte.</p>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <button type="button" id="btnToggleHistoricoBuscas" class="btn btn-quiet" onclick="App.toggleHistoricoPanel()" style="display: flex; align-items: center; gap: 8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+              <span>Pastas & Histórico</span>
+              <span id="badgeHistoricoCount" class="badge-tag" style="background: rgba(47, 114, 245, 0.25); color: var(--sky); font-size: 11px; padding: 2px 7px; border-radius: 12px; font-weight: 700;">0</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- PAINEL DE PASTAS E HISTÓRICO DE PESQUISAS SALVAS -->
+        <div id="panelHistoricoBuscas" class="historico-buscas-panel" style="display: none;">
+          <div class="historico-panel-header">
+            <div class="historico-header-info">
+              <div class="folder-header-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+              </div>
+              <div>
+                <h3 style="margin: 0; font-size: 16px; color: #fff; font-weight: 650; display: flex; align-items: center; gap: 8px;">
+                  Pastas & Histórico de Pesquisas
+                  <span id="historicoTotalSalvasTag" class="badge-tag" style="background: rgba(37, 208, 126, 0.15); color: #25d07e; font-size: 11px;">0 salvas</span>
+                </h3>
+                <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--ink-2);">Todas as suas buscas e os leads capturados ficam organizados em pastas para você consultar, reabrir na tabela ou exportar a qualquer momento.</p>
+              </div>
+            </div>
+            <div class="historico-header-actions">
+              <button type="button" class="btn btn-quiet btn-sm" onclick="App.salvarBuscaAtualComoPasta()" title="Salvar os resultados atuais em uma pasta personalizada">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                Salvar Busca em Nova Pasta
+              </button>
+              <button type="button" class="btn btn-quiet btn-sm" onclick="App.limparHistoricoBuscas()" style="color: #ff6b6b;" title="Excluir todas as pastas salvas">
+                Limpar Tudo
+              </button>
+            </div>
+          </div>
+
+          <!-- Barra de Busca Rápida nas Pastas -->
+          <div class="historico-filter-bar">
+            <input type="text" id="inputFiltroHistorico" class="form-control form-control-sm" placeholder="🔍 Filtrar pastas por atividade, estado, termo ou data..." oninput="App.filtrarCardsHistorico(this.value)">
+          </div>
+
+          <!-- Grid de Pastas / Buscas -->
+          <div id="historicoBuscasList" class="historico-cards-grid">
+            <!-- Preenchido dinamicamente pelo App.renderHistoricoBuscas() -->
+          </div>
         </div>
 
         <div class="search-container">
