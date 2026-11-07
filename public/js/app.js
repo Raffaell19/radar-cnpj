@@ -3,12 +3,88 @@
  * Gerencia Navegação, Globo & Feed ao Vivo, Radares, Busca Avulsa, CRM Kanban e WhatsApp Assistido
  */
 
+/**
+ * LOCAL STORAGE ADAPTER
+ * Persistência autônoma no navegador (Zero dependência de servidor ou banco externo)
+ */
+const LocalStore = {
+  KEYS: {
+    LEADS: 'radar_leads_v2',
+    RADARES: 'radar_radares_v2',
+    HISTORICO: 'radar_historico_v2'
+  },
+
+  getLeads() {
+    try {
+      const raw = localStorage.getItem(this.KEYS.LEADS);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.warn('Erro ao ler leads do localStorage:', e);
+      return [];
+    }
+  },
+
+  saveLeads(leads) {
+    try {
+      localStorage.setItem(this.KEYS.LEADS, JSON.stringify(leads));
+    } catch (e) {
+      console.warn('Erro ao salvar leads no localStorage:', e);
+    }
+  },
+
+  getRadares() {
+    try {
+      const raw = localStorage.getItem(this.KEYS.RADARES);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  saveRadares(radares) {
+    try {
+      localStorage.setItem(this.KEYS.RADARES, JSON.stringify(radares));
+    } catch (e) {
+      console.warn('Erro ao salvar radares no localStorage:', e);
+    }
+  },
+
+  getHistorico(leadId) {
+    try {
+      const raw = localStorage.getItem(this.KEYS.HISTORICO);
+      const all = raw ? JSON.parse(raw) : [];
+      if (leadId) {
+        return all.filter(h => String(h.lead_id) === String(leadId));
+      }
+      return all;
+    } catch (e) {
+      return [];
+    }
+  },
+
+  addHistorico(leadId, evento, descricao) {
+    try {
+      const raw = localStorage.getItem(this.KEYS.HISTORICO);
+      const all = raw ? JSON.parse(raw) : [];
+      all.unshift({
+        id: Date.now(),
+        lead_id: Number(leadId),
+        evento,
+        descricao,
+        data: new Date().toLocaleString('pt-BR')
+      });
+      localStorage.setItem(this.KEYS.HISTORICO, JSON.stringify(all.slice(0, 1000)));
+    } catch (e) {}
+  }
+};
+
 const App = {
   activeTab: 'home',
   liveData: null,
   liveIndex: 0,
   liveTimer: null,
   currentModalLead: null,
+  currentSearchResults: [],
 
   // Inicialização Geral
   async init() {
@@ -105,23 +181,27 @@ const App = {
   },
 
   // 3. Módulo Radar de Empresas (Conforme o Vídeo)
-  async loadRadars() {
+  loadRadars() {
     try {
-      const res = await fetch('/api/radares');
-      const data = await res.json();
-      if (!data.success) return;
+      const radares = LocalStore.getRadares();
+      const leads = LocalStore.getLeads();
 
-      // Métricas do Topo
-      document.getElementById('metricResponderam').textContent = data.estatisticas.responderam;
-      document.getElementById('metricReceberam').textContent = data.estatisticas.receberam;
-      document.getElementById('metricEsperando').textContent = data.estatisticas.esperandoEnvio;
-      document.getElementById('metricRadaresLigados').textContent = `${data.estatisticas.radaresLigados} de ${data.estatisticas.totalRadares}`;
+      // Métricas do Topo calculadas em tempo real
+      const responderam = leads.filter(l => l.coluna === 'negociacao' || l.coluna === 'fechado').length;
+      const receberam = leads.filter(l => l.coluna === 'contatado').length;
+      const esperandoEnvio = leads.filter(l => l.coluna === 'novos').length;
+      const radaresLigados = radares.filter(r => r.ativo).length;
+
+      document.getElementById('metricResponderam').textContent = responderam;
+      document.getElementById('metricReceberam').textContent = receberam;
+      document.getElementById('metricEsperando').textContent = esperandoEnvio;
+      document.getElementById('metricRadaresLigados').textContent = `${radaresLigados} de ${radares.length}`;
 
       // Lista de Radares
       const container = document.getElementById('radarsListContainer');
       if (!container) return;
 
-      if (!data.radares.length) {
+      if (!radares.length) {
         container.innerHTML = `
           <div class="empty-state" style="text-align:center; padding: 40px; color: var(--ink-3);">
             <p>Nenhum radar configurado ainda. Crie seu primeiro radar para monitorar novas aberturas!</p>
@@ -130,7 +210,7 @@ const App = {
         return;
       }
 
-      container.innerHTML = data.radares.map(radar => `
+      container.innerHTML = radares.map(radar => `
         <div class="radar-card" data-id="${radar.id}">
           <div class="radar-card-header">
             <div class="radar-info">
@@ -143,12 +223,12 @@ const App = {
                 ${radar.nome}
               </h3>
               <div class="radar-chips">
-                <span class="radar-chip">${radar.municipio_filtro !== 'todos' ? radar.municipio_filtro + '/' + radar.uf_filtro : (radar.uf_filtro !== 'todos' ? radar.uf_filtro : 'Brasil inteiro')}</span>
-                <span class="radar-chip">Capital ≥ R$ ${Number(radar.capital_minimo).toLocaleString('pt-BR')}</span>
-                <span class="radar-chip">${radar.dias_abertura} dias</span>
+                <span class="radar-chip">${radar.municipio_filtro && radar.municipio_filtro !== 'todos' ? radar.municipio_filtro + '/' + radar.uf_filtro : (radar.uf_filtro && radar.uf_filtro !== 'todos' ? radar.uf_filtro : 'Brasil inteiro')}</span>
+                <span class="radar-chip">Capital ≥ R$ ${Number(radar.capital_minimo || 0).toLocaleString('pt-BR')}</span>
+                <span class="radar-chip">${radar.dias_abertura || 30} dias</span>
                 ${radar.so_celulares ? '<span class="radar-chip">Só Celulares</span>' : ''}
                 ${radar.excluir_mei ? '<span class="radar-chip">Sem MEI</span>' : ''}
-                <span class="radar-chip">Canal: ${radar.canal.toUpperCase()}</span>
+                <span class="radar-chip">Canal: ${(radar.canal || 'whatsapp').toUpperCase()}</span>
               </div>
             </div>
             <div class="radar-controls">
@@ -174,7 +254,7 @@ const App = {
               ${radar.ativo ? '● Monitorando em tempo real na base da Receita' : '○ Você pausou esta automação. Ligue o interruptor para retomar.'}
             </span>
             <span>
-              <b>${radar.capturas_mes}</b> de ${radar.teto_mensal} empresas capturadas este mês
+              <b>${radar.capturas_mes || 0}</b> de ${radar.teto_mensal || 200} empresas capturadas este mês
             </span>
           </div>
         </div>
@@ -184,44 +264,92 @@ const App = {
     }
   },
 
-  async toggleRadarStatus(id, checked) {
-    try {
-      await fetch(`/api/radares/${id}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ativo: checked })
-      });
+  toggleRadarStatus(id, checked) {
+    const radares = LocalStore.getRadares();
+    const r = radares.find(rad => String(rad.id) === String(id));
+    if (r) {
+      r.ativo = checked;
+      LocalStore.saveRadares(radares);
       this.showToast(`Radar ${checked ? 'ativado' : 'pausado'} com sucesso!`);
       this.loadRadars();
-    } catch (err) {
-      this.showToast('Erro ao atualizar status do radar');
     }
   },
 
   async triggerRadarRun(id) {
     try {
-      this.showToast('Executando varredura na base de dados...');
-      const res = await fetch(`/api/radares/${id}/executar`, { method: 'POST' });
+      this.showToast('Executando varredura na base de dados da Receita Federal...');
+      const radares = LocalStore.getRadares();
+      const radar = radares.find(r => String(r.id) === String(id));
+      if (!radar) return;
+
+      const queryParams = new URLSearchParams();
+      if (radar.cnae_filtro) queryParams.append('cnae', radar.cnae_filtro);
+      if (radar.uf_filtro && radar.uf_filtro !== 'todos') queryParams.append('uf', radar.uf_filtro);
+      if (radar.municipio_filtro && radar.municipio_filtro !== 'todos') queryParams.append('municipio', radar.municipio_filtro);
+      if (radar.so_celulares) queryParams.append('apenasCelular', '1');
+      if (radar.excluir_mei) queryParams.append('semMei', '1');
+      if (radar.capital_minimo > 0) queryParams.append('capitalMin', radar.capital_minimo);
+
+      const res = await fetch(`/api/pesquisa?${queryParams.toString()}`);
       const data = await res.json();
-      if (data.success) {
-        this.showToast(`Varredura concluída! ${data.resultado.leadsCriados} novos leads enviados ao CRM.`);
-        this.loadRadars();
-        this.loadCrm();
+      const empresas = (data.success && data.empresas) ? data.empresas : [];
+
+      let novosLeads = 0;
+      if (empresas.length > 0 && radar.criar_lead_crm) {
+        const leads = LocalStore.getLeads();
+        const existingCnpjs = new Set(leads.map(l => (l.cnpj || '').replace(/\D/g, '')));
+
+        for (const emp of empresas) {
+          const clean = (emp.cnpj || '').replace(/\D/g, '');
+          if (!existingCnpjs.has(clean)) {
+            const leadId = Date.now() + Math.floor(Math.random() * 1000);
+            leads.unshift({
+              id: leadId,
+              cnpj: emp.cnpj,
+              razao_social: emp.razao_social,
+              nome_fantasia: emp.nome_fantasia || '',
+              municipio: emp.municipio || '',
+              uf: emp.uf || '',
+              telefone: emp.telefone || '',
+              email: emp.email || '',
+              cnae_descricao: emp.cnae_descricao || '',
+              capital_social: Number(emp.capital_social) || 0,
+              contato_nome: emp.socio_nome || 'Responsável',
+              coluna: 'novos',
+              origem: 'radar',
+              radar_id: radar.id,
+              data_abertura: emp.data_abertura || '',
+              importado_em: new Date().toISOString(),
+              notas: ''
+            });
+            LocalStore.addHistorico(leadId, 'captura_radar', `Capturado automaticamente pelo radar "${radar.nome}"`);
+            existingCnpjs.add(clean);
+            novosLeads++;
+            if (novosLeads >= (radar.teto_diario || 20)) break;
+          }
+        }
+
+        radar.capturas_mes = (radar.capturas_mes || 0) + novosLeads;
+        LocalStore.saveLeads(leads);
+        LocalStore.saveRadares(radares);
       }
+
+      this.showToast(`Varredura concluída! ${novosLeads} novos leads enviados ao CRM.`);
+      this.loadRadars();
+      this.loadCrm();
     } catch (err) {
+      console.error('Erro na varredura:', err);
       this.showToast('Erro ao executar varredura.');
     }
   },
 
-  async deleteRadar(id) {
+  deleteRadar(id) {
     if (!confirm('Tem certeza que deseja excluir este radar?')) return;
-    try {
-      await fetch(`/api/radares/${id}`, { method: 'DELETE' });
-      this.showToast('Radar excluído.');
-      this.loadRadars();
-    } catch (err) {
-      this.showToast('Erro ao excluir radar.');
-    }
+    let radares = LocalStore.getRadares();
+    radares = radares.filter(r => String(r.id) !== String(id));
+    LocalStore.saveRadares(radares);
+    this.showToast('Radar excluído com sucesso.');
+    this.loadRadars();
   },
 
   // Modal Novo / Editar Radar
@@ -258,17 +386,15 @@ const App = {
     this.openModal('modalNovoRadar');
   },
 
-  async openEditRadarModal(id) {
+  openEditRadarModal(id) {
     try {
-      this.showToast('Carregando dados do radar...');
-      const res = await fetch(`/api/radares/${id}`);
-      const data = await res.json();
-      if (!data.success || !data.radar) {
-        this.showToast('Erro ao carregar radar para edição.');
+      const radares = LocalStore.getRadares();
+      const radar = radares.find(r => String(r.id) === String(id));
+      if (!radar) {
+        this.showToast('Radar não encontrado.');
         return;
       }
 
-      const radar = data.radar;
       const form = document.getElementById('formNovoRadar');
       if (!form) return;
 
@@ -446,26 +572,47 @@ const App = {
       };
 
       try {
-        const url = radarId ? `/api/radares/${radarId}` : '/api/radares';
-        const method = radarId ? 'PUT' : 'POST';
+        let radares = LocalStore.getRadares();
+        let targetId = radarId;
 
-        const res = await fetch(url, {
-          method,
+        if (targetId) {
+          const idx = radares.findIndex(r => String(r.id) === String(targetId));
+          if (idx !== -1) {
+            radares[idx] = { ...radares[idx], ...payload, id: Number(targetId) };
+          }
+        } else {
+          targetId = Date.now();
+          const newRadar = {
+            ...payload,
+            id: targetId,
+            capturas_mes: 0,
+            disparos_hoje: 0,
+            criado_em: new Date().toISOString()
+          };
+          radares.push(newRadar);
+        }
+
+        LocalStore.saveRadares(radares);
+
+        // Opcional: sincronização secundária se o servidor estiver disponível
+        fetch(radarId ? `/api/radares/${radarId}` : '/api/radares', {
+          method: radarId ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (data.success) {
-          this.closeModal('modalNovoRadar');
-          this.showToast(radarId ? 'Radar atualizado e nova varredura executada!' : 'Radar criado e primeira varredura realizada!');
-          form.reset();
-          if (document.getElementById('inputRadarId')) document.getElementById('inputRadarId').value = '';
-          this.loadRadars();
-          this.loadCrm();
-        } else {
-          this.showToast(data.error || 'Erro ao processar radar.');
+        }).catch(() => {});
+
+        this.closeModal('modalNovoRadar');
+        this.showToast(radarId ? 'Radar atualizado com sucesso!' : 'Radar configurado com sucesso!');
+        form.reset();
+        if (document.getElementById('inputRadarId')) document.getElementById('inputRadarId').value = '';
+        this.loadRadars();
+        this.loadCrm();
+
+        if (payload.ativo) {
+          this.triggerRadarRun(targetId);
         }
       } catch (err) {
+        console.error('Erro ao salvar radar:', err);
         this.showToast('Erro ao salvar radar.');
       }
     });
@@ -515,6 +662,12 @@ const App = {
       const res = await fetch(`/api/pesquisa?${queryParams.toString()}`);
       const data = await res.json();
       if (!data.success) return;
+
+      this.currentSearchResults = data.empresas || [];
+      const btnExport = document.getElementById('btnExportSearchCsv');
+      if (btnExport) {
+        btnExport.style.display = (data.empresas && data.empresas.length > 0) ? 'inline-flex' : 'none';
+      }
 
       if (countEl) countEl.textContent = `${data.total.toLocaleString('pt-BR')} empresas encontradas`;
 
@@ -575,43 +728,97 @@ const App = {
 
   async importToCrm(cnpj) {
     try {
-      const res = await fetch('/api/leads/importar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cnpj, coluna: 'novos' })
-      });
-      const data = await res.json();
-      if (data.success) {
-        this.showToast(data.jaExistia ? 'Empresa já existia no CRM!' : 'Empresa importada para Novos Leads no CRM!');
-        this.loadCrm();
+      const cleanCnpj = String(cnpj || '').replace(/\D/g, '');
+      const leads = LocalStore.getLeads();
+      const existe = leads.find(l => (l.cnpj || '').replace(/\D/g, '') === cleanCnpj);
+      if (existe) {
+        this.showToast('Esta empresa já está no seu CRM!');
+        return;
       }
+
+      // Procura primeiro nos resultados em memória
+      let emp = (this.currentSearchResults || []).find(e => (e.cnpj || '').replace(/\D/g, '') === cleanCnpj);
+
+      // Se não estiver em memória, busca na API federal
+      if (!emp) {
+        const res = await fetch(`/api/empresa/${cleanCnpj}`);
+        const data = await res.json();
+        if (data.success && data.empresa) {
+          emp = data.empresa;
+        }
+      }
+
+      if (!emp) {
+        this.showToast('Erro ao obter dados cadastrais da empresa.');
+        return;
+      }
+
+      const leadId = Date.now();
+      const novoLead = {
+        id: leadId,
+        cnpj: emp.cnpj,
+        razao_social: emp.razao_social,
+        nome_fantasia: emp.nome_fantasia || '',
+        municipio: emp.municipio || '',
+        uf: emp.uf || '',
+        telefone: emp.telefone || '',
+        email: emp.email || '',
+        cnae_descricao: emp.cnae_descricao || '',
+        capital_social: Number(emp.capital_social) || 0,
+        contato_nome: emp.socio_nome || 'Responsável',
+        coluna: 'novos',
+        origem: 'busca',
+        data_abertura: emp.data_abertura || '',
+        importado_em: new Date().toISOString(),
+        notas: ''
+      };
+
+      leads.unshift(novoLead);
+      LocalStore.saveLeads(leads);
+      LocalStore.addHistorico(leadId, 'lead_criado', 'Empresa adicionada aos Novos Leads');
+
+      this.showToast('Empresa importada com sucesso para o CRM!');
+      this.loadCrm();
+      this.loadRadars();
     } catch (err) {
+      console.error('Erro ao importar para CRM:', err);
       this.showToast('Erro ao importar para o CRM.');
     }
   },
 
-  // 5. Módulo CRM Kanban
-  async loadCrm() {
+  // 5. Módulo CRM Kanban (Base Local do Navegador)
+  loadCrm() {
     try {
-      const res = await fetch('/api/leads');
-      const data = await res.json();
-      if (!data.success) return;
-
+      const leads = LocalStore.getLeads();
       const columns = ['novos', 'contatado', 'negociacao', 'fechado', 'perdido'];
+
+      const kanban = {
+        novos: [],
+        contatado: [],
+        negociacao: [],
+        fechado: [],
+        perdido: []
+      };
+
+      leads.forEach(l => {
+        const col = (l.coluna && kanban[l.coluna]) ? l.coluna : 'novos';
+        kanban[col].push(l);
+      });
+
       columns.forEach(col => {
         const bodyEl = document.getElementById(`kanbanColBody-${col}`);
         const countBadge = document.getElementById(`kanbanCount-${col}`);
-        const leads = data.kanban[col] || [];
+        const colLeads = kanban[col] || [];
 
-        if (countBadge) countBadge.textContent = leads.length;
+        if (countBadge) countBadge.textContent = colLeads.length;
         if (!bodyEl) return;
 
-        if (!leads.length) {
+        if (!colLeads.length) {
           bodyEl.innerHTML = `<div style="text-align:center; padding:30px 10px; color:var(--hair); font-size:12px;">Nenhum lead nesta etapa</div>`;
           return;
         }
 
-        bodyEl.innerHTML = leads.map(l => `
+        bodyEl.innerHTML = colLeads.map(l => `
           <div class="lead-card" draggable="true" ondragstart="App.onLeadDragStart(event, ${l.id})">
             <div class="lead-title">${l.razao_social}</div>
             <div class="lead-cnpj">CNPJ ${l.cnpj}</div>
@@ -638,6 +845,136 @@ const App = {
     }
   },
 
+  exportLeadsToCsv() {
+    const leads = LocalStore.getLeads();
+    if (!leads.length) {
+      this.showToast('Nenhum lead no funil para exportar.');
+      return;
+    }
+
+    const headers = [
+      'CNPJ',
+      'Razao Social',
+      'Nome Fantasia',
+      'Etapa CRM',
+      'Telefone',
+      'Contato',
+      'Municipio',
+      'UF',
+      'CNAE Descricao',
+      'Capital Social',
+      'Data Abertura',
+      'Anotacoes',
+      'Data Importacao'
+    ];
+
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const rows = leads.map(l => [
+      escapeCsv(l.cnpj),
+      escapeCsv(l.razao_social),
+      escapeCsv(l.nome_fantasia || ''),
+      escapeCsv(l.coluna),
+      escapeCsv(l.telefone || ''),
+      escapeCsv(l.contato_nome || ''),
+      escapeCsv(l.municipio || ''),
+      escapeCsv(l.uf || ''),
+      escapeCsv(l.cnae_descricao || ''),
+      escapeCsv(l.capital_social || 0),
+      escapeCsv(l.data_abertura || ''),
+      escapeCsv(l.notas || ''),
+      escapeCsv(l.importado_em || '')
+    ].join(';'));
+
+    const csvContent = '\uFEFF' + headers.join(';') + '\n' + rows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dataHoje = new Date().toISOString().split('T')[0];
+    a.href = url;
+    a.download = `leads_crm_${dataHoje}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    this.showToast(`Exportação concluída! (${leads.length} leads salvos na planilha)`);
+  },
+
+  exportSearchResultsToCsv() {
+    const empresas = this.currentSearchResults || [];
+    if (!empresas.length) {
+      this.showToast('Nenhum resultado para exportar.');
+      return;
+    }
+
+    const headers = [
+      'CNPJ',
+      'Razao Social',
+      'Nome Fantasia',
+      'Situacao',
+      'Telefone',
+      'Contato/Socio',
+      'Municipio',
+      'UF',
+      'CNAE Codigo',
+      'CNAE Descricao',
+      'Capital Social',
+      'Data Abertura'
+    ];
+
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const rows = empresas.map(e => [
+      escapeCsv(e.cnpj),
+      escapeCsv(e.razao_social),
+      escapeCsv(e.nome_fantasia || ''),
+      escapeCsv(e.situacao_cadastral || 'ATIVA'),
+      escapeCsv(e.telefone || ''),
+      escapeCsv(e.socio_nome || ''),
+      escapeCsv(e.municipio || ''),
+      escapeCsv(e.uf || ''),
+      escapeCsv(e.cnae_codigo || ''),
+      escapeCsv(e.cnae_descricao || ''),
+      escapeCsv(e.capital_social || 0),
+      escapeCsv(e.data_abertura || '')
+    ].join(';'));
+
+    const csvContent = '\uFEFF' + headers.join(';') + '\n' + rows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dataHoje = new Date().toISOString().split('T')[0];
+    a.href = url;
+    a.download = `empresas_busca_${dataHoje}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    this.showToast(`Exportação concluída! (${empresas.length} empresas na planilha)`);
+  },
+
+  clearAllLeads() {
+    const leads = LocalStore.getLeads();
+    if (!leads.length) {
+      this.showToast('O funil de leads já está vazio!');
+      return;
+    }
+    if (!confirm(`Deseja realmente limpar todos os ${leads.length} leads do seu CRM?`)) return;
+
+    LocalStore.saveLeads([]);
+    this.showToast('Funil de leads limpo com sucesso.');
+    this.loadCrm();
+    this.loadRadars();
+  },
+
   onLeadDragStart(e, leadId) {
     e.dataTransfer.setData('text/plain', leadId);
     e.target.classList.add('dragging');
@@ -653,23 +990,22 @@ const App = {
       body.addEventListener('dragleave', () => {
         body.style.background = 'transparent';
       });
-      body.addEventListener('drop', async (e) => {
+      body.addEventListener('drop', (e) => {
         e.preventDefault();
         body.style.background = 'transparent';
         const leadId = e.dataTransfer.getData('text/plain');
         const novaColuna = body.dataset.coluna;
 
         if (leadId && novaColuna) {
-          try {
-            await fetch(`/api/leads/${leadId}/coluna`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ coluna: novaColuna })
-            });
+          const leads = LocalStore.getLeads();
+          const lead = leads.find(l => String(l.id) === String(leadId));
+          if (lead && lead.coluna !== novaColuna) {
+            const antiga = lead.coluna;
+            lead.coluna = novaColuna;
+            LocalStore.saveLeads(leads);
+            LocalStore.addHistorico(lead.id, 'mudanca_etapa', `Etapa alterada de "${antiga}" para "${novaColuna}"`);
             App.loadCrm();
             App.loadRadars();
-          } catch (err) {
-            console.error(err);
           }
         }
       });
@@ -677,13 +1013,13 @@ const App = {
   },
 
   // 6. WhatsApp Assistido via Link Direto wa.me
-  async openWaModalFromLead(leadId) {
+  openWaModalFromLead(leadId) {
     try {
-      const res = await fetch(`/api/leads/${leadId}`);
-      const data = await res.json();
-      if (!data.success) return;
-      this.currentModalLead = data.lead;
-      this.renderWaModal(data.lead);
+      const leads = LocalStore.getLeads();
+      const lead = leads.find(l => String(l.id) === String(leadId));
+      if (!lead) return;
+      this.currentModalLead = lead;
+      this.renderWaModal(lead);
     } catch (err) {
       this.showToast('Erro ao preparar disparo de WhatsApp.');
     }
@@ -691,7 +1027,8 @@ const App = {
 
   async openWaModalFromCompany(cnpj) {
     try {
-      const res = await fetch(`/api/empresa/${cnpj}`);
+      const cleanCnpj = String(cnpj || '').replace(/\D/g, '');
+      const res = await fetch(`/api/empresa/${cleanCnpj}`);
       const data = await res.json();
       if (!data.success) return;
 
@@ -739,13 +1076,16 @@ const App = {
 
         // Se for um lead do CRM, registra no histórico e avança para 'Em Contato'
         if (dados.id) {
-          await fetch('/api/whatsapp/disparado', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ leadId: dados.id, mensagem: info.mensagemFormatada })
-          });
-          App.loadCrm();
-          App.loadRadars();
+          const leads = LocalStore.getLeads();
+          const lead = leads.find(l => String(l.id) === String(dados.id));
+          if (lead) {
+            lead.coluna = 'contatado';
+            lead.ultimo_contato_em = new Date().toISOString();
+            LocalStore.saveLeads(leads);
+            LocalStore.addHistorico(lead.id, 'whatsapp_disparado', `Mensagem enviada via WhatsApp para ${dados.telefone || ''}`);
+            App.loadCrm();
+            App.loadRadars();
+          }
         }
 
         App.closeModal('modalWhatsapp');
@@ -1038,15 +1378,25 @@ const App = {
 
   async openLeadDetails(id) {
     try {
-      const res = await fetch(`/api/leads/${id}`);
-      const data = await res.json();
-      if (!data.success) {
+      const leads = LocalStore.getLeads();
+      const lead = leads.find(l => String(l.id) === String(id));
+      if (!lead) {
         this.showToast('Lead não encontrado.');
         return;
       }
-      const lead = data.lead;
-      const emp = data.dados_completos || lead;
-      this.renderDrawerData(emp, lead, data.historico || []);
+
+      let emp = lead;
+      try {
+        const cleanCnpj = (lead.cnpj || '').replace(/\D/g, '');
+        const res = await fetch(`/api/empresa/${cleanCnpj}`);
+        const data = await res.json();
+        if (data.success && data.empresa) {
+          emp = { ...lead, ...data.empresa };
+        }
+      } catch (e) {}
+
+      const historico = LocalStore.getHistorico(lead.id);
+      this.renderDrawerData(emp, lead, historico);
     } catch (err) {
       console.error('Erro ao abrir detalhes do lead:', err);
       this.showToast('Erro ao carregar detalhes do lead.');
@@ -1069,23 +1419,9 @@ const App = {
       }
       const emp = data.empresa;
 
-      let lead = null;
-      let historico = [];
-      try {
-        const leadRes = await fetch(`/api/leads?q=${cleanCnpj}`);
-        const leadData = await leadRes.json();
-        if (leadData.success && leadData.leads && leadData.leads.length > 0) {
-          const lFound = leadData.leads.find(l => l.cnpj.replace(/\D/g, '') === cleanCnpj);
-          if (lFound) {
-            const detRes = await fetch(`/api/leads/${lFound.id}`);
-            const detData = await detRes.json();
-            if (detData.success) {
-              lead = detData.lead;
-              historico = detData.historico || [];
-            }
-          }
-        }
-      } catch (e) {}
+      const leads = LocalStore.getLeads();
+      const lead = leads.find(l => (l.cnpj || '').replace(/\D/g, '') === cleanCnpj) || null;
+      const historico = lead ? LocalStore.getHistorico(lead.id) : [];
 
       this.renderDrawerData(emp, lead, historico);
     } catch (err) {
@@ -1109,19 +1445,18 @@ const App = {
       return;
     }
     if (!this.activeDrawerLead) return;
-    try {
-      await fetch(`/api/leads/${this.activeDrawerLead.id}/coluna`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ coluna: newStage })
-      });
+
+    const leads = LocalStore.getLeads();
+    const lead = leads.find(l => String(l.id) === String(this.activeDrawerLead.id));
+    if (lead) {
+      const antiga = lead.coluna;
+      lead.coluna = newStage;
+      LocalStore.saveLeads(leads);
+      LocalStore.addHistorico(lead.id, 'mudanca_etapa', `Etapa alterada de "${antiga}" para "${newStage}"`);
       this.showToast('Etapa do lead atualizada com sucesso!');
       this.loadCrm();
       this.loadRadars();
-      // Atualiza timeline interna
-      this.openLeadDetails(this.activeDrawerLead.id);
-    } catch (err) {
-      this.showToast('Erro ao atualizar etapa do lead.');
+      this.openLeadDetails(lead.id);
     }
   },
 
@@ -1132,32 +1467,28 @@ const App = {
     }
     if (!this.activeDrawerLead) return;
     const notasVal = document.getElementById('drawerLeadNotasInput')?.value || '';
-    try {
-      await fetch(`/api/leads/${this.activeDrawerLead.id}/notas`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notas: notasVal })
-      });
+    const leads = LocalStore.getLeads();
+    const lead = leads.find(l => String(l.id) === String(this.activeDrawerLead.id));
+    if (lead) {
+      lead.notas = notasVal;
+      LocalStore.saveLeads(leads);
+      LocalStore.addHistorico(lead.id, 'anotacao', 'Anotações internas salvas');
       this.showToast('Anotações salvas com sucesso!');
-      // Atualiza timeline interna
-    } catch (err) {
-      this.showToast('Erro ao salvar anotações.');
+      this.openLeadDetails(lead.id);
     }
   },
 
-  async deleteLeadFromDrawer() {
+  deleteLeadFromDrawer() {
     if (!this.activeDrawerLead) return;
     if (!confirm(`Tem certeza que deseja remover o lead "${this.activeDrawerLead.razao_social}" do CRM?`)) return;
 
-    try {
-      await fetch(`/api/leads/${this.activeDrawerLead.id}`, { method: 'DELETE' });
-      this.showToast('Lead removido do CRM.');
-      this.closeLeadDetails();
-      this.loadCrm();
-      this.loadRadars();
-    } catch (err) {
-      this.showToast('Erro ao excluir lead.');
-    }
+    let leads = LocalStore.getLeads();
+    leads = leads.filter(l => String(l.id) !== String(this.activeDrawerLead.id));
+    LocalStore.saveLeads(leads);
+    this.showToast('Lead removido do CRM.');
+    this.closeLeadDetails();
+    this.loadCrm();
+    this.loadRadars();
   },
 
   triggerDrawerWa() {

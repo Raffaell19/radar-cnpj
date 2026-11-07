@@ -244,8 +244,12 @@
 
           <!-- Tabela de Resultados -->
           <div class="results-card">
-            <div class="results-header">
+            <div class="results-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
               <span id="searchResultsCount">Carregando empresas...</span>
+              <button class="btn btn-quiet btn-sm" onclick="App.exportSearchResultsToCsv()" id="btnExportSearchCsv" style="display: none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Exportar Busca (CSV/Excel)
+              </button>
             </div>
 
             <div class="table-wrapper">
@@ -271,9 +275,20 @@
 
       <!-- ==================== TAB 4: CRM KANBAN ==================== -->
       <section id="view-crm" class="view-section">
-        <div class="section-title" style="margin-bottom: 20px;">
-          <h2>CRM Kanban de Leads</h2>
-          <p>Organize seus contatos capturados pelo radar ou busca avulsa em cada etapa do funil comercial.</p>
+        <div class="section-title" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h2>CRM Kanban de Leads</h2>
+            <p>Organize seus contatos capturados pelo radar ou busca avulsa em cada etapa do funil comercial (salvo localmente no seu navegador).</p>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-quiet btn-sm" onclick="App.exportLeadsToCsv()" title="Baixar todos os leads em formato Excel/CSV">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Exportar Leads (CSV/Excel)
+            </button>
+            <button class="btn btn-quiet btn-sm" style="color: var(--danger);" onclick="App.clearAllLeads()" title="Limpar todos os leads salvos">
+              Limpar Funil
+            </button>
+          </div>
         </div>
 
         <div class="kanban-board">

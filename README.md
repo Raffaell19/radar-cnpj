@@ -54,3 +54,4 @@ O projeto está pronto para a **Vercel** através da configuração `vercel.json
 2. O framework preset será reconhecido automaticamente.
 3. Certifique-se de selecionar **Node.js 22.x** nas configurações do projeto na Vercel.
 4. Clique em **Deploy**!
+
