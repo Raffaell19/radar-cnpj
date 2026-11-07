@@ -12,7 +12,34 @@ const LocalStore = {
     LEADS: 'radar_leads_v2',
     RADARES: 'radar_radares_v2',
     HISTORICO: 'radar_historico_v2',
-    BUSCAS: 'radar_buscas_v1'
+    BUSCAS: 'radar_buscas_v1',
+    NICHES: 'radar_custom_niches_v1'
+  },
+
+  getCustomNiches() {
+    try {
+      const raw = localStorage.getItem(this.KEYS.NICHES);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  saveCustomNiches(niches) {
+    try {
+      localStorage.setItem(this.KEYS.NICHES, JSON.stringify(niches));
+    } catch (e) { }
+  },
+
+  addCustomNiche(niche) {
+    const list = this.getCustomNiches();
+    list.push(niche);
+    this.saveCustomNiches(list);
+  },
+
+  deleteCustomNiche(id) {
+    const list = this.getCustomNiches().filter(n => n.id !== id);
+    this.saveCustomNiches(list);
   },
 
   getLeads() {
@@ -131,6 +158,29 @@ const LocalStore = {
   }
 };
 
+/**
+ * NICHOS ESTRATÉGICOS PREDEFINIDOS (12 NICHOS MAIS BUSCADOS)
+ */
+const DEFAULT_NICHES = [
+  { id: 'odonto', nome: 'Odontologia', icone: '🦷', termo: 'Odontologia' },
+  { id: 'estetica', nome: 'Estética & Beleza', icone: '✨', termo: 'Estética' },
+  { id: 'clinicas', nome: 'Clínicas Médicas', icone: '🩺', termo: 'Clínica Médica' },
+  { id: 'advocacia', nome: 'Advocacia', icone: '⚖️', termo: 'Advocacia' },
+  { id: 'contabil', nome: 'Contabilidade', icone: '📊', termo: 'Contabilidade' },
+  { id: 'tecnologia', nome: 'Tecnologia & TI', icone: '💻', termo: 'Tecnologia' },
+  { id: 'restaurante', nome: 'Restaurantes', icone: '🍽️', termo: 'Restaurante' },
+  { id: 'engenharia', nome: 'Engenharia & Obras', icone: '🏗️', termo: 'Engenharia' },
+  { id: 'logistica', nome: 'Logística & Cargas', icone: '🚚', termo: 'Transporte de Cargas' },
+  { id: 'varejo', nome: 'Comércio Varejista', icone: '🛍️', termo: 'Comércio Varejista' },
+  { id: 'educacao', nome: 'Educação & Cursos', icone: '🎓', termo: 'Cursos' },
+  { id: 'industria', nome: 'Indústria & Confecção', icone: '🏭', termo: 'Confecção' }
+];
+
+const SUPABASE_CONFIG = {
+  url: 'https://flkmbqgvgdtucmronsgr.supabase.co',
+  anonKey: 'sb_publishable__RELyvx9iFo3Nb4RNeqWMA_XMb3uOSl'
+};
+
 const App = {
   activeTab: 'home',
   liveData: null,
@@ -138,18 +188,234 @@ const App = {
   liveTimer: null,
   currentModalLead: null,
   currentSearchResults: [],
+  currentUser: null,
+  supabaseAuth: null,
+  currentActiveNicheId: null,
 
   // Inicialização Geral
   async init() {
+    this.initSupabaseAuth();
     this.setupNavigation();
     this.setupModals();
     this.setupSearch();
+    this.renderNichesChips();
     this.setupRadarForm();
     this.updateHistoricoBadgeCount();
     await this.loadLiveStats();
     await this.loadRadars();
     await this.loadCrm();
     this.startLiveFeedLoop();
+    await this.checkAuthSession();
+  },
+
+  // 0. Autenticação Multi-Usuário (Supabase Auth - Acesso Fechado)
+  initSupabaseAuth() {
+    if (typeof supabase !== 'undefined' && supabase.createClient) {
+      try {
+        this.supabaseAuth = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+      } catch (e) {
+        console.warn('Erro ao inicializar Supabase Auth client:', e);
+      }
+    }
+  },
+
+  async checkAuthSession() {
+    if (!this.supabaseAuth) return;
+    try {
+      const { data: { session }, error } = await this.supabaseAuth.auth.getSession();
+      if (session && session.user) {
+        this.currentUser = session.user;
+        this.updateAuthUI(session.user);
+      } else {
+        this.currentUser = null;
+        this.showAuthModal();
+      }
+    } catch (e) {
+      console.warn('Erro ao verificar sessão Supabase:', e);
+    }
+  },
+
+  updateAuthUI(user) {
+    const headerProfile = document.getElementById('userProfileHeader');
+    const emailText = document.getElementById('userEmailText');
+    if (headerProfile && emailText && user) {
+      emailText.textContent = user.email || 'Operador';
+      headerProfile.style.display = 'inline-flex';
+    }
+    this.hideAuthModal();
+  },
+
+  showAuthModal() {
+    const modal = document.getElementById('authOverlayModal');
+    if (modal) {
+      modal.style.display = 'flex';
+      const inputEmail = document.getElementById('authInputEmail');
+      if (inputEmail) setTimeout(() => inputEmail.focus(), 150);
+    }
+  },
+
+  hideAuthModal() {
+    const modal = document.getElementById('authOverlayModal');
+    if (modal) modal.style.display = 'none';
+  },
+
+  async handleAuthLogin(event) {
+    if (event) event.preventDefault();
+    if (!this.supabaseAuth) {
+      this.showToast('Módulo de autenticação indisponível.');
+      return;
+    }
+
+    const emailInput = document.getElementById('authInputEmail');
+    const passInput = document.getElementById('authInputPassword');
+    const errorAlert = document.getElementById('authAlertError');
+    const errorMsg = document.getElementById('authAlertErrorMsg');
+    const btnSubmit = document.getElementById('btnSubmitAuthLogin');
+
+    if (errorAlert) errorAlert.style.display = 'none';
+    if (btnSubmit) {
+      btnSubmit.disabled = true;
+      btnSubmit.innerHTML = 'Validando credenciais...';
+    }
+
+    try {
+      const { data, error } = await this.supabaseAuth.auth.signInWithPassword({
+        email: emailInput ? emailInput.value.trim() : '',
+        password: passInput ? passInput.value : ''
+      });
+
+      if (error) {
+        if (errorAlert && errorMsg) {
+          const msg = (error.message && (error.message.includes('Invalid') || error.message.includes('credentials')))
+            ? 'E-mail ou senha incorretos. Acesso restrito a operadores cadastrados.'
+            : (error.message || 'Falha ao autenticar.');
+          errorMsg.textContent = msg;
+          errorAlert.style.display = 'flex';
+        }
+        return;
+      }
+
+      if (data && data.user) {
+        this.currentUser = data.user;
+        this.updateAuthUI(data.user);
+        this.showToast(`Login realizado com sucesso! Bem-vindo(a), ${data.user.email}`);
+        if (passInput) passInput.value = '';
+      }
+    } catch (err) {
+      if (errorAlert && errorMsg) {
+        errorMsg.textContent = 'Erro de conexão com o serviço de autenticação.';
+        errorAlert.style.display = 'flex';
+      }
+    } finally {
+      if (btnSubmit) {
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+          Entrar no Sistema
+        `;
+      }
+    }
+  },
+
+  async logoutUser() {
+    if (this.supabaseAuth) {
+      try {
+        await this.supabaseAuth.auth.signOut();
+      } catch (e) { }
+    }
+    this.currentUser = null;
+    const headerProfile = document.getElementById('userProfileHeader');
+    if (headerProfile) headerProfile.style.display = 'none';
+    this.showAuthModal();
+    this.showToast('Sessão encerrada com segurança.');
+  },
+
+  // Nichos Rápidos
+  renderNichesChips() {
+    const container = document.getElementById('nichesChipsGrid');
+    if (!container) return;
+
+    const customNiches = LocalStore.getCustomNiches();
+    const allNiches = [...DEFAULT_NICHES, ...customNiches];
+
+    container.innerHTML = allNiches.map(niche => {
+      const isActive = this.currentActiveNicheId === niche.id;
+      const isCustom = Boolean(niche.isCustom);
+      const safeTerm = (niche.termo || niche.nome).replace(/'/g, "\\'");
+      return `
+        <button type="button" class="niche-chip-btn ${isActive ? 'active' : ''}" 
+                onclick="App.selectQuickNiche('${safeTerm}', '${niche.id}')"
+                title="Filtrar por ${niche.nome}">
+          <span class="niche-chip-icon">${niche.icone || '🎯'}</span>
+          <span>${niche.nome}</span>
+          ${isCustom ? `
+            <span class="niche-chip-remove" onclick="event.stopPropagation(); App.removeCustomNiche('${niche.id}')" title="Remover nicho personalizado">×</span>
+          ` : ''}
+        </button>
+      `;
+    }).join('');
+  },
+
+  selectQuickNiche(termo, nicheId) {
+    this.currentActiveNicheId = nicheId;
+    const inputCnae = document.getElementById('searchInputCnae');
+    if (inputCnae) {
+      inputCnae.value = termo;
+    }
+    this.renderNichesChips();
+    this.runSearch();
+  },
+
+  promptAddCustomNiche() {
+    const nome = prompt('Digite o nome do novo nicho a adicionar:\n(Ex: Academias, Imobiliárias, Pet Shops, Farmácias)');
+    if (!nome || !nome.trim()) return;
+
+    const termo = prompt(`Digite a palavra-chave de atividade para buscar na Receita Federal:\n(Padrão: "${nome.trim()}")`, nome.trim());
+    if (!termo || !termo.trim()) return;
+
+    const newNiche = {
+      id: 'custom_' + Date.now(),
+      nome: nome.trim(),
+      icone: '🎯',
+      termo: termo.trim(),
+      isCustom: true
+    };
+
+    LocalStore.addCustomNiche(newNiche);
+    this.renderNichesChips();
+    this.selectQuickNiche(newNiche.termo, newNiche.id);
+    this.showToast(`Nicho "${nome.trim()}" adicionado! Buscando empresas...`);
+  },
+
+  removeCustomNiche(id) {
+    if (confirm('Deseja remover este nicho da sua lista?')) {
+      LocalStore.deleteCustomNiche(id);
+      if (this.currentActiveNicheId === id) {
+        this.currentActiveNicheId = null;
+      }
+      this.renderNichesChips();
+      this.showToast('Nicho removido.');
+    }
+  },
+
+  handleLimiteChange(val) {
+    const customInput = document.getElementById('searchCustomLimiteNum');
+    const badge = document.getElementById('searchLimiteBadge');
+    if (val === 'custom') {
+      if (customInput) {
+        customInput.style.display = 'inline-block';
+        customInput.focus();
+      }
+      if (badge && customInput) badge.textContent = `${customInput.value || 100} empresas`;
+    } else {
+      if (customInput) customInput.style.display = 'none';
+      if (badge) badge.textContent = `${val} empresas`;
+    }
+  },
+
+  handleCustomLimiteInput(val) {
+    const badge = document.getElementById('searchLimiteBadge');
+    if (badge) badge.textContent = `${val || 1} empresas`;
   },
 
   // 1. Navegação por Abas
@@ -899,6 +1165,37 @@ const App = {
     const soCelular = document.getElementById('searchCheckCelular')?.checked ? 1 : 0;
     const semMei = document.getElementById('searchCheckSemMei')?.checked ? 1 : 0;
 
+    // 1. Limite configurável de leads
+    let limite = 100;
+    const selectLimite = document.getElementById('searchSelectLimite')?.value || '100';
+    if (selectLimite === 'custom') {
+      limite = parseInt(document.getElementById('searchCustomLimiteNum')?.value, 10) || 100;
+    } else {
+      limite = parseInt(selectLimite, 10) || 100;
+    }
+    if (limite > 500) limite = 500;
+    if (limite < 1) limite = 15;
+
+    // 2. Anti-repetição (ocultar leads já pesquisados ou no CRM)
+    const ocultarRepetidos = document.getElementById('searchCheckOcultarRepetidos')?.checked;
+    const cnpjsExcluir = [];
+    if (ocultarRepetidos) {
+      // Leads do CRM
+      const leadsCrm = LocalStore.getLeads();
+      leadsCrm.forEach(l => {
+        if (l.cnpj) cnpjsExcluir.push(String(l.cnpj).replace(/\D/g, ''));
+      });
+      // Leads em pastas anteriores salvas
+      const buscas = LocalStore.getHistoricoBuscas();
+      buscas.forEach(b => {
+        if (Array.isArray(b.empresas)) {
+          b.empresas.forEach(e => {
+            if (e.cnpj) cnpjsExcluir.push(String(e.cnpj).replace(/\D/g, ''));
+          });
+        }
+      });
+    }
+
     const queryParams = new URLSearchParams({
       termo,
       uf,
@@ -908,16 +1205,21 @@ const App = {
       so_celulares: soCelular,
       excluir_mei: semMei,
       pagina: page,
-      por_pagina: 15
+      por_pagina: limite
     });
 
     if (diasAbertura && diasAbertura !== 'todos') {
       queryParams.append('dias_abertura', diasAbertura);
     }
 
+    if (cnpjsExcluir.length > 0) {
+      const unicos = [...new Set(cnpjsExcluir)];
+      queryParams.append('excluir_cnpjs', unicos.slice(0, 150).join(','));
+    }
+
     const tbody = document.getElementById('searchResultsTbody');
     const countEl = document.getElementById('searchResultsCount');
-    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px;">Carregando empresas...</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px;">Carregando até ${limite} empresas...</td></tr>`;
 
     try {
       const res = await fetch(`/api/pesquisa?${queryParams.toString()}`);
@@ -930,7 +1232,7 @@ const App = {
         btnExport.style.display = (data.empresas && data.empresas.length > 0) ? 'inline-flex' : 'none';
       }
 
-      if (countEl) countEl.textContent = `${data.total.toLocaleString('pt-BR')} empresas encontradas`;
+      if (countEl) countEl.textContent = `${data.total.toLocaleString('pt-BR')} empresas encontradas (exibindo ${data.empresas.length})`;
 
       if (!data.empresas.length) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--ink-3);">Nenhuma empresa encontrada com estes critérios.</td></tr>`;
@@ -946,12 +1248,13 @@ const App = {
       if (uf && uf !== 'todos') partes.push(uf.replace(/,/g, ', '));
       if (cidade) partes.push(cidade);
       if (diasAbertura && diasAbertura !== 'todos') partes.push(`Últimos ${diasAbertura} dias`);
+      partes.push(`Limite: ${limite}`);
       const tituloAuto = partes.length > 0 ? partes.join(' · ') : 'Pesquisa Geral de Empresas';
 
       const registroBusca = {
         id: Date.now(),
         titulo: tituloAuto,
-        filtros: { termo, uf, diasAbertura, cnae, cidade, capitalMin, soCelular, semMei },
+        filtros: { termo, uf, diasAbertura, cnae, cidade, capitalMin, soCelular, semMei, limite },
         total: data.total || data.empresas.length,
         empresas: data.empresas,
         criado_em: new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
@@ -1027,13 +1330,26 @@ const App = {
       return;
     }
 
+    // Set de CNPJs já cadastrados no CRM para destacar status
+    const crmLeads = LocalStore.getLeads();
+    const crmCnpjs = new Set(crmLeads.map(l => String(l.cnpj || '').replace(/\D/g, '')));
+
     tbody.innerHTML = empresas.map(emp => {
       const ab = this.formatarDataEAbertura(emp.data_abertura);
+      const cleanCnpj = String(emp.cnpj || '').replace(/\D/g, '');
+      const jaNoCrm = crmCnpjs.has(cleanCnpj);
+      const badgeStatus = jaNoCrm
+        ? '<span class="badge-lead-crm">💼 No CRM</span>'
+        : '<span class="badge-lead-inedito">✨ Inédita</span>';
+
       return `
       <tr>
         <td>
           <b style="color:#fff; display:block;">${emp.razao_social}</b>
-          <span style="font-size:11px; color:var(--ink-3); font-family:var(--mono);">${emp.cnpj}</span>
+          <div style="display:flex; align-items:center; gap:6px; margin-top:3px; flex-wrap:wrap;">
+            <span style="font-size:11px; color:var(--ink-3); font-family:var(--mono);">${emp.cnpj}</span>
+            ${badgeStatus}
+          </div>
         </td>
         <td>
           <span style="color:var(--sky); font-size:12px;">${emp.municipio || '—'}/${emp.uf || '—'}</span>

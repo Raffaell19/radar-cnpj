@@ -112,9 +112,23 @@ async function pesquisarEmpresasSupabase(filtros = {}) {
       query = query.gte('data_abertura', limiteStr);
     }
 
-    // Ordenação e Paginação
+    // 9. Anti-Repetição (Exclusão de CNPJs já prospectados / salvos)
+    let cnpjsExcluir = [];
+    if (Array.isArray(filtros.excluir_cnpjs)) {
+      cnpjsExcluir = filtros.excluir_cnpjs.filter(Boolean);
+    } else if (typeof filtros.excluir_cnpjs === 'string' && filtros.excluir_cnpjs.trim()) {
+      cnpjsExcluir = filtros.excluir_cnpjs.split(',').map(c => c.trim()).filter(Boolean);
+    }
+
+    if (cnpjsExcluir.length > 0) {
+      // Formata para o padrão de lista do PostgREST
+      const safeList = cnpjsExcluir.slice(0, 200).map(c => `"${c}"`).join(',');
+      query = query.not('cnpj', 'in', `(${safeList})`);
+    }
+
+    // Ordenação e Paginação / Limite solicitado
     const pagina = Math.max(1, parseInt(filtros.pagina, 10) || 1);
-    const porPagina = Math.min(100, Math.max(5, parseInt(filtros.por_pagina, 10) || 15));
+    const porPagina = Math.min(500, Math.max(1, parseInt(filtros.por_pagina || filtros.limite, 10) || 15));
     const de = (pagina - 1) * porPagina;
     const ate = de + porPagina - 1;
 

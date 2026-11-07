@@ -610,6 +610,20 @@ async function pesquisarEmpresas(filtros = {}) {
       query += ' AND data_abertura >= ?';
       params.push(limiteStr);
     }
+
+    if (filtros.excluir_cnpjs) {
+      let cnpjsExcluir = [];
+      if (Array.isArray(filtros.excluir_cnpjs)) {
+        cnpjsExcluir = filtros.excluir_cnpjs.filter(Boolean);
+      } else if (typeof filtros.excluir_cnpjs === 'string' && filtros.excluir_cnpjs.trim()) {
+        cnpjsExcluir = filtros.excluir_cnpjs.split(',').map(c => c.trim()).filter(Boolean);
+      }
+      if (cnpjsExcluir.length > 0) {
+        const placeholders = cnpjsExcluir.slice(0, 200).map(() => '?').join(', ');
+        query += ` AND cnpj NOT IN (${placeholders})`;
+        params.push(...cnpjsExcluir.slice(0, 200));
+      }
+    }
   }
 
   // Contagem total
@@ -619,7 +633,7 @@ async function pesquisarEmpresas(filtros = {}) {
   // Ordenação e paginação
   query += ' ORDER BY data_abertura DESC, id DESC';
   const pagina = Math.max(1, parseInt(filtros.pagina, 10) || 1);
-  const porPagina = Math.min(100, Math.max(5, parseInt(filtros.por_pagina, 10) || 15));
+  const porPagina = Math.min(500, Math.max(1, parseInt(filtros.por_pagina || filtros.limite, 10) || 15));
   const offset = (pagina - 1) * porPagina;
 
   query += ' LIMIT ? OFFSET ?';
