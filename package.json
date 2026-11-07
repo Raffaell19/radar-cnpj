@@ -1,0 +1,27 @@
+{
+  "name": "sistema-radar-cnpj",
+  "version": "1.0.0",
+  "description": "Sistema Radar CNPJ - Prospecção B2B de empresas recém-abertas com CRM Kanban e abordagem via WhatsApp",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "keywords": [
+    "cnpj",
+    "radar",
+    "crm",
+    "prospeccao",
+    "b2b"
+  ],
+  "author": "Rafael",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.3.0"
+  }
+}

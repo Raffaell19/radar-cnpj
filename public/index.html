@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Radar CNPJ — Encontre Empresas Recém-Abertas e Aborde no WhatsApp</title>
+  <meta name="description" content="Plataforma de prospecção B2B de empresas brasileiras com dados em tempo real da Receita Federal, Radar contínuo de novas aberturas, CRM Kanban e WhatsApp assistido.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon.png">
+  <link rel="shortcut icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/img/favicon.png">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <div class="app-wrapper">
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="header-inner">
+        <a class="logo-brand" onclick="App.switchTab('home')" title="Radar CNPJ - Início">
+          <img src="/img/logo-radar.png" alt="Radar CNPJ" class="logo-img">
+        </a>
+
+        <nav class="nav-tabs">
+          <button class="tab-btn active" data-tab="home">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            Visão Geral
+          </button>
+          <button class="tab-btn" data-tab="radar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+            Radar de Empresas
+          </button>
+          <button class="tab-btn" data-tab="search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            Busca Avulsa
+          </button>
+          <button class="tab-btn" data-tab="crm">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+            CRM Kanban
+          </button>
+        </nav>
+
+        <div class="header-actions">
+          <button class="btn btn-solid btn-sm" onclick="App.openCreateRadarModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            + Novo Radar
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN BODY -->
+    <main class="app-main">
+
+      <!-- ==================== TAB 1: VISÃO GERAL & GLOBO 3D ==================== -->
+      <section id="view-home" class="view-section active">
+        <div class="hero-grid">
+          <div class="hero-info">
+            <div class="eyebrow">
+              <span class="pulsing-dot"></span>
+              Base da Receita Federal em Tempo Real
+            </div>
+
+            <h1>
+              Empresas que abriram hoje.<br>
+              <span class="highlight">Aborde antes de todo mundo.</span>
+            </h1>
+
+            <p class="hero-lead">
+              Monitore continuamente novas inscrições de CNPJ em qualquer cidade e atividade do Brasil. Identifique sócios, telefones celulares e inicie o primeiro contato no WhatsApp com links dinâmicos e cadência segura.
+            </p>
+
+            <div class="hero-actions">
+              <button class="btn btn-solid btn-lg" onclick="App.openModal('modalNovoRadar')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle></svg>
+                Criar Meu Primeiro Radar
+              </button>
+              <button class="btn btn-quiet btn-lg" data-goto="search">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                Buscar Empresas Agora
+              </button>
+            </div>
+
+            <div class="live-microstat">
+              <span class="pulsing-dot"></span>
+              <span><b id="heroStatNum" style="color:#fff; font-size:16px;">18.826</b> empresas registradas hoje · base de <b id="baseCountTotal">28.846.108</b> ativas</span>
+            </div>
+          </div>
+
+          <!-- Globo 3D e Live Feed Card -->
+          <div class="hero-globe-wrapper">
+            <div id="globeContainer" class="globe-container">
+              <canvas id="globeCanvas"></canvas>
+            </div>
+
+            <div class="live-feed-card">
+              <div class="feed-header">
+                <span>Feed de Aberturas Recentes</span>
+                <span class="badge-live">AO VIVO</span>
+              </div>
+              <div class="feed-body">
+                <div class="feed-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14h2v2h-2zm0-10h2v8h-2z"/></svg>
+                </div>
+                <div class="feed-text">
+                  <div id="feedCompanyTitle" class="feed-title">BASE EMPRESARIAL DE SERVIÇOS MVS LTDA</div>
+                  <div id="feedCompanyMeta" class="feed-meta">CNPJ 69.720.347 · aberta hoje no Brasil</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 2: RADAR DE EMPRESAS ==================== -->
+      <section id="view-radar" class="view-section">
+        <div class="radar-topbar">
+          <div class="section-title">
+            <h2>Radar de Prospecção Contínua</h2>
+            <p>Capta empresas novas da Receita Federal e prepara a abordagem automática no WhatsApp.</p>
+          </div>
+          <button class="btn btn-solid" onclick="App.openCreateRadarModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Novo radar
+          </button>
+        </div>
+
+        <!-- Métricas estilo TodoCNPJ (Responderam, Receberam, Esperando Envio, Radares Ligados) -->
+        <div class="metrics-row">
+          <div class="metric-card active-metric">
+            <div class="metric-header">
+              <span class="metric-label">Responderam</span>
+              <span class="metric-icon">💬</span>
+            </div>
+            <div id="metricResponderam" class="metric-val">0</div>
+            <div class="metric-sub">Leads em negociação/fechados</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Receberam</span>
+              <span class="metric-icon">✈️</span>
+            </div>
+            <div id="metricReceberam" class="metric-val">0</div>
+            <div class="metric-sub">Mensagens entregues até agora</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Esperando Envio</span>
+              <span class="metric-icon">⏳</span>
+            </div>
+            <div id="metricEsperando" class="metric-val">0</div>
+            <div class="metric-sub">Saem no ritmo seguro do número</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Radares Ligados</span>
+              <span class="metric-icon">🎯</span>
+            </div>
+            <div id="metricRadaresLigados" class="metric-val">1 de 1</div>
+            <div class="metric-sub">Os pausados não enviam</div>
+          </div>
+        </div>
+
+        <!-- Lista de Radares Configurados -->
+        <div id="radarsListContainer" class="radars-list">
+          <!-- Renderizado dinamicamente pelo app.js -->
+        </div>
+      </section>
+
+      <!-- ==================== TAB 3: BUSCA AVULSA DE EMPRESAS ==================== -->
+      <section id="view-search" class="view-section">
+        <div class="section-title" style="margin-bottom: 20px;">
+          <h2>Busca Avulsa de Empresas</h2>
+          <p>Filtre qualquer CNPJ do Brasil por atividade, localização, capital social e porte.</p>
+        </div>
+
+        <div class="search-container">
+          <form id="formSearchFilters" class="filter-box">
+            <div class="filter-grid">
+              <div class="form-group">
+                <label>Termo ou Razão Social</label>
+                <input type="text" id="searchInputTermo" class="form-control" placeholder="Nome da empresa ou sócio...">
+              </div>
+
+              <div class="form-group">
+                <label>Atividade (CNAE)</label>
+                <input type="text" id="searchInputCnae" class="form-control" placeholder="Ex: Odontologia, Restaurante, TI...">
+              </div>
+
+              <div class="form-group">
+                <label>Estado (UF)</label>
+                <select id="searchSelectUf" class="form-control">
+                  <option value="todos">Todos os Estados</option>
+                  <option value="PR">PR - Paraná</option>
+                  <option value="SP">SP - São Paulo</option>
+                  <option value="SC">SC - Santa Catarina</option>
+                  <option value="RS">RS - Rio Grande do Sul</option>
+                  <option value="RJ">RJ - Rio de Janeiro</option>
+                  <option value="MG">MG - Minas Gerais</option>
+                  <option value="GO">GO - Goiás</option>
+                  <option value="BA">BA - Bahia</option>
+                  <option value="DF">DF - Distrito Federal</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Município</label>
+                <input type="text" id="searchInputCidade" class="form-control" placeholder="Ex: Londrina, Curitiba, Campinas...">
+              </div>
+
+              <div class="form-group">
+                <label>Capital Social Mínimo</label>
+                <input type="number" id="searchCapitalMin" class="form-control" placeholder="R$ 10.000" step="1000">
+              </div>
+            </div>
+
+            <div style="display:flex; gap:20px; flex-wrap:wrap; margin-bottom:16px;">
+              <label class="checkbox-group">
+                <input type="checkbox" id="searchCheckCelular" checked>
+                <span>Apenas empresas com Celular</span>
+              </label>
+
+              <label class="checkbox-group">
+                <input type="checkbox" id="searchCheckSemMei" checked>
+                <span>Excluir MEI (Microempreendedor Individual)</span>
+              </label>
+            </div>
+
+            <div class="filter-actions">
+              <button type="submit" id="btnSubmitSearch" class="btn btn-solid">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                Pesquisar Empresas
+              </button>
+            </div>
+          </form>
+
+          <!-- Tabela de Resultados -->
+          <div class="results-card">
+            <div class="results-header">
+              <span id="searchResultsCount">Carregando empresas...</span>
+            </div>
+
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Empresa & CNPJ</th>
+                    <th>Localização</th>
+                    <th>Atividade Principal</th>
+                    <th>Capital Social</th>
+                    <th>Telefone</th>
+                    <th style="text-align:right;">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="searchResultsTbody">
+                  <!-- Linhas preenchidas dinamicamente -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB 4: CRM KANBAN ==================== -->
+      <section id="view-crm" class="view-section">
+        <div class="section-title" style="margin-bottom: 20px;">
+          <h2>CRM Kanban de Leads</h2>
+          <p>Organize seus contatos capturados pelo radar ou busca avulsa em cada etapa do funil comercial.</p>
+        </div>
+
+        <div class="kanban-board">
+          <!-- Coluna 1: Novos Leads -->
+          <div class="kanban-col">
+            <div class="kanban-col-head">
+              <span>Novos Leads</span>
+              <span id="kanbanCount-novos" class="col-badge">0</span>
+            </div>
+            <div id="kanbanColBody-novos" class="kanban-col-body" data-coluna="novos"></div>
+          </div>
+
+          <!-- Coluna 2: Em Contato -->
+          <div class="kanban-col">
+            <div class="kanban-col-head">
+              <span>Em Contato</span>
+              <span id="kanbanCount-contatado" class="col-badge">0</span>
+            </div>
+            <div id="kanbanColBody-contatado" class="kanban-col-body" data-coluna="contatado"></div>
+          </div>
+
+          <!-- Coluna 3: Negociação -->
+          <div class="kanban-col">
+            <div class="kanban-col-head">
+              <span>Negociação</span>
+              <span id="kanbanCount-negociacao" class="col-badge">0</span>
+            </div>
+            <div id="kanbanColBody-negociacao" class="kanban-col-body" data-coluna="negociacao"></div>
+          </div>
+
+          <!-- Coluna 4: Fechado -->
+          <div class="kanban-col">
+            <div class="kanban-col-head">
+              <span>Fechado 🎉</span>
+              <span id="kanbanCount-fechado" class="col-badge" style="background:rgba(37,208,126,0.2); color:var(--live);">0</span>
+            </div>
+            <div id="kanbanColBody-fechado" class="kanban-col-body" data-coluna="fechado"></div>
+          </div>
+
+          <!-- Coluna 5: Perdido -->
+          <div class="kanban-col">
+            <div class="kanban-col-head">
+              <span>Perdido</span>
+              <span id="kanbanCount-perdido" class="col-badge">0</span>
+            </div>
+            <div id="kanbanColBody-perdido" class="kanban-col-body" data-coluna="perdido"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ==================== MODAL: NOVO / EDITAR RADAR ==================== -->
+  <div id="modalNovoRadar" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modalRadarTitulo">Novo radar</h3>
+        <button class="modal-close" onclick="App.closeModal('modalNovoRadar')">&times;</button>
+      </div>
+
+      <form id="formNovoRadar">
+        <input type="hidden" id="inputRadarId" name="radar_id" value="">
+        <div class="modal-body">
+          <!-- Canais -->
+          <div class="channel-options">
+            <label class="channel-card selected">
+              <input type="radio" name="canal" value="whatsapp" checked>
+              <div class="channel-card-text">
+                <b>WhatsApp</b>
+                <p>Manda pelo número conectado, no ritmo seguro dele.</p>
+              </div>
+            </label>
+
+            <label class="channel-card">
+              <input type="radio" name="canal" value="email">
+              <div class="channel-card-text">
+                <b>E-mail</b>
+                <p>Manda pelo remetente SMTP configurado, sem teto diário.</p>
+              </div>
+            </label>
+          </div>
+
+          <!-- Nome da Automação -->
+          <div class="form-group">
+            <label>Nome do radar</label>
+            <input type="text" name="nome" class="form-control" placeholder="Ex: Empresas novas em Londrina" required>
+          </div>
+
+          <!-- CNAE / Atividade -->
+          <div class="form-group">
+            <label>Atividade (CNAE)</label>
+            <input type="text" name="cnae_filtro" class="form-control" placeholder="Digite a atividade ou o código. Ex.: odontologia, restaurante, 8630504">
+            <small style="color:var(--ink-3); font-size:11px;">Deixe vazio para monitorar qualquer atividade.</small>
+          </div>
+
+          <!-- Capital Social e Porte -->
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
+            <div class="form-group">
+              <label>Capital social</label>
+              <select name="capital_minimo" class="form-control">
+                <option value="0">Qualquer capital</option>
+                <option value="10000" selected>Acima de R$ 10 mil</option>
+                <option value="30000">Acima de R$ 30 mil</option>
+                <option value="50000">Acima de R$ 50 mil</option>
+                <option value="100000">Acima de R$ 100 mil</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Porte</label>
+              <select name="porte_filtro" class="form-control">
+                <option value="todos" selected>Qualquer porte</option>
+                <option value="ME">Microempresa (ME)</option>
+                <option value="EPP">Pequeno Porte (EPP)</option>
+                <option value="DEMAIS">Demais portes</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Estado e Município -->
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
+            <div class="form-group">
+              <label>Estado</label>
+              <select name="uf_filtro" class="form-control">
+                <option value="todos">Todos os estados</option>
+                <option value="PR" selected>PR — Paraná</option>
+                <option value="SP">SP — São Paulo</option>
+                <option value="SC">SC — Santa Catarina</option>
+                <option value="RS">RS — Rio Grande do Sul</option>
+                <option value="RJ">RJ — Rio de Janeiro</option>
+                <option value="MG">MG — Minas Gerais</option>
+                <option value="GO">GO — Goiás</option>
+                <option value="BA">BA — Bahia</option>
+                <option value="DF">DF — Distrito Federal</option>
+                <option value="ES">ES — Espírito Santo</option>
+                <option value="PE">PE — Pernambuco</option>
+                <option value="CE">CE — Ceará</option>
+                <option value="MT">MT — Mato Grosso</option>
+                <option value="MS">MS — Mato Grosso do Sul</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Município</label>
+              <input type="text" name="municipio_filtro" class="form-control" placeholder="Todos os municípios (ou digite um)">
+            </div>
+          </div>
+
+          <!-- Aberturas dos últimos dias com opção personalizada -->
+          <div class="form-group">
+            <label for="selectDiasAberturaPreset">Aberturas dos últimos</label>
+            <select id="selectDiasAberturaPreset" class="form-control" onchange="App.onDiasPresetChange(this.value)">
+              <option value="7">7 dias (última semana)</option>
+              <option value="15">15 dias (última quinzena)</option>
+              <option value="30" selected>30 dias (recomendado)</option>
+              <option value="60">60 dias (2 meses)</option>
+              <option value="90">90 dias (3 meses)</option>
+              <option value="120">120 dias (4 meses)</option>
+              <option value="180">180 dias (6 meses)</option>
+              <option value="365">365 dias (1 ano)</option>
+              <option value="custom">⚙️ Período personalizado...</option>
+            </select>
+
+            <!-- Container de Período Personalizado -->
+            <div id="customDiasContainer" style="display: none; margin-top: 10px; background: rgba(3, 23, 90, 0.5); border: 1px solid var(--hair); border-radius: 8px; padding: 12px 14px;">
+              <label style="font-size: 11px; text-transform: uppercase; color: var(--sky); margin-bottom: 6px; display: block; font-weight: 600;">
+                Definir tempo de abertura personalizado
+              </label>
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <input type="number" id="inputCustomDiasValor" class="form-control" style="max-width: 130px; font-weight: 600;" min="1" max="7300" placeholder="Ex: 90" oninput="App.onCustomDiasInput()">
+                <select id="selectCustomDiasUnidade" class="form-control" style="max-width: 130px;" onchange="App.onCustomDiasInput()">
+                  <option value="dias">Dias</option>
+                  <option value="meses">Meses</option>
+                  <option value="anos">Anos</option>
+                </select>
+                <div id="customDiasCalculoBadge" style="font-size: 12px; color: var(--live); font-family: var(--mono); font-weight: 600;">
+                  = 90 dias
+                </div>
+              </div>
+              <small style="color: var(--ink-3); font-size: 11px; margin-top: 6px; display: block;">
+                Permite buscar empresas abertas há mais tempo na base da Receita Federal.
+              </small>
+            </div>
+
+            <input type="hidden" name="dias_abertura" id="inputDiasAberturaFinal" value="30">
+            <small style="color:var(--ink-3); font-size:11px; margin-top: 4px; display: block;">A Receita publica com atualização diária.</small>
+          </div>
+
+          <!-- Mensagem WhatsApp -->
+          <div class="form-group">
+            <label>Mensagem de WhatsApp</label>
+            <textarea name="mensagem_template" class="form-control" rows="3" style="height:auto; resize:vertical; padding:10px;">Olá {primeiro_nome_contato}, vi que a {empresa} abriu agora em {municipio}! Como vocês estão cuidando da estruturação e divulgação comercial neste início?</textarea>
+            <small style="color:var(--ink-3); font-size:11px;">Tags dinâmicas: <code>{primeiro_nome_contato}</code>, <code>{empresa}</code>, <code>{municipio}</code>, <code>{cnae_descricao}</code></small>
+          </div>
+
+          <!-- Opções Avançadas (Accordion) -->
+          <div id="accordionToggleBtn" class="accordion-toggle">
+            <span>▼ Opções avançadas (tetos de disparo, segurança e filtros)</span>
+          </div>
+
+          <div id="accordionContent" class="accordion-content">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
+              <div class="form-group">
+                <label>Teto de créditos por dia</label>
+                <select name="teto_diario" class="form-control">
+                  <option value="10" selected>10 por dia (mais seguro)</option>
+                  <option value="25">25 por dia</option>
+                  <option value="50">50 por dia</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Teto de créditos por mês</label>
+                <select name="teto_mensal" class="form-control">
+                  <option value="100" selected>100 por mês</option>
+                  <option value="250">250 por mês</option>
+                  <option value="500">500 por mês</option>
+                </select>
+              </div>
+            </div>
+
+            <label class="checkbox-group">
+              <input type="checkbox" name="so_celulares" checked>
+              <span><b>Só celulares</b> — Economiza crédito. Garante entrega no WhatsApp.</span>
+            </label>
+
+            <label class="checkbox-group">
+              <input type="checkbox" name="excluir_mei" checked>
+              <span><b>Excluir MEI</b> — Razão social de MEI é o nome da pessoa física.</span>
+            </label>
+
+            <label class="checkbox-group">
+              <input type="checkbox" name="criar_lead_crm" checked>
+              <span><b>Criar lead no CRM</b> — Cada empresa capturada já entra na primeira coluna do seu quadro.</span>
+            </label>
+
+            <label class="checkbox-group">
+              <input type="checkbox" name="ativo" checked>
+              <span><b>Ligar ao salvar</b> — Inicia imediatamente a varredura e monitoramento.</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-quiet" onclick="App.closeModal('modalNovoRadar')">Cancelar</button>
+          <button type="submit" id="btnSubmitRadar" class="btn btn-solid btn-lg" style="font-weight: 600; padding: 0 24px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span id="btnSubmitRadarTexto">Salvar e Iniciar Radar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: FICHA DO CNPJ ==================== -->
+  <div id="modalFichaCnpj" class="modal-overlay">
+    <div class="modal-box" style="max-width: 720px;">
+      <div class="modal-header">
+        <h3 id="fichaRazao">Razão Social</h3>
+        <button class="modal-close" onclick="App.closeModal('modalFichaCnpj')">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+          <div>
+            <label style="color:var(--ink-3); font-size:11px; text-transform:uppercase;">Nome Fantasia</label>
+            <div id="fichaFantasia" style="font-weight:600; color:#fff;">—</div>
+          </div>
+          <div>
+            <label style="color:var(--ink-3); font-size:11px; text-transform:uppercase;">CNPJ</label>
+            <div id="fichaCnpj" style="font-family:var(--mono); color:var(--sky);">—</div>
+          </div>
+          <div>
+            <label style="color:var(--ink-3); font-size:11px; text-transform:uppercase;">Situação Cadastral</label>
+            <div id="fichaSituacao" style="color:var(--live); font-weight:600;">ATIVA</div>
+          </div>
+          <div>
+            <label style="color:var(--ink-3); font-size:11px; text-transform:uppercase;">Data de Abertura</label>
+            <div id="fichaAbertura" style="color:#fff;">—</div>
+          </div>
+          <div>
+            <label style="color:var(--ink-3); font-size:11px; text-transform:uppercase;">Capital Social</label>
+            <div id="fichaCapital" style="color:#fff; font-weight:600;">—</div>
+          </div>
+          <div>
+            <label style="color:var(--ink-3); font-size:11px; text-transform:uppercase;">Porte</label>
+            <div id="fichaPorte" style="color:#fff;">—</div>
+          </div>
+        </div>
+
+        <div>
+          <label style="color:var(--ink-3); font-size:11px; text-transform:uppercase;">Atividade Econômica (CNAE)</label>
+          <div id="fichaCnae" style="color:var(--ink-2); font-size:13px; margin-top:2px;">—</div>
+        </div>
+
+        <div>
+          <label style="color:var(--ink-3); font-size:11px; text-transform:uppercase;">Endereço Comercial</label>
+          <div id="fichaEndereco" style="color:var(--ink-2); font-size:13px; margin-top:2px;">—</div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+          <div>
+            <label style="color:var(--ink-3); font-size:11px; text-transform:uppercase;">Telefone Comercial</label>
+            <div id="fichaTelefone" style="color:var(--sky); font-weight:550;">—</div>
+          </div>
+          <div>
+            <label style="color:var(--ink-3); font-size:11px; text-transform:uppercase;">E-mail Declarado</label>
+            <div id="fichaEmail" style="color:var(--ink-2);">—</div>
+          </div>
+        </div>
+
+        <div>
+          <label style="color:var(--ink-3); font-size:11px; text-transform:uppercase; margin-bottom:6px; display:block;">Quadro de Sócios e Administradores (QSA)</label>
+          <div id="fichaQsaList"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="justify-content:space-between;">
+        <button type="button" class="btn btn-quiet" onclick="App.closeModal('modalFichaCnpj')">Fechar</button>
+        <button type="button" class="btn btn-solid" onclick="App.closeModal('modalFichaCnpj'); App.openCompanyDetails(document.getElementById('fichaCnpj').textContent);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          Abrir Raio-X & Redes Sociais
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: DISPARO ASSISTIDO WHATSAPP ==================== -->
+  <div id="modalWhatsapp" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Disparo Assistido via WhatsApp</h3>
+        <button class="modal-close" onclick="App.closeModal('modalWhatsapp')">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="background:rgba(255,255,255,0.03); border:1px solid var(--hair); padding:12px 16px; border-radius:8px;">
+          <div style="font-size:12px; color:var(--ink-3); text-transform:uppercase;">Destinatário</div>
+          <div id="waTargetCompany" style="font-weight:600; color:#fff; font-size:15px; margin-top:2px;">—</div>
+          <div id="waTargetContact" style="font-size:13px; color:var(--sky); margin-top:2px;">—</div>
+        </div>
+
+        <div class="whatsapp-preview-box">
+          <div style="font-size:11px; text-transform:uppercase; color:var(--live); margin-bottom:8px; font-weight:600;">
+            Prévia da Mensagem Personalizada
+          </div>
+          <div id="waBubbleMessage" class="wa-bubble">Carregando mensagem...</div>
+        </div>
+
+        <p style="font-size:12px; color:var(--ink-3); line-height:1.5;">
+          Ao clicar no botão abaixo, abriremos diretamente o <b>WhatsApp Web ou Desktop</b> com a mensagem personalizada pronta para envio. O lead será movido automaticamente para <b>"Em Contato"</b> no seu CRM.
+        </p>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-quiet" onclick="App.closeModal('modalWhatsapp')">Cancelar</button>
+        <button type="button" id="btnDispararWaMe" class="btn btn-whatsapp">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          Abrir no WhatsApp (wa.me)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== GAVETA SLIDE-OVER: RAIO-X COMPLETO DO LEAD ==================== -->
+  <div id="drawerBackdrop" class="drawer-backdrop" onclick="App.closeLeadDetails()"></div>
+
+  <aside id="drawerLeadDetails" class="lead-drawer" aria-label="Raio-X do Lead">
+    <div class="drawer-header">
+      <div class="drawer-header-top">
+        <div class="drawer-badges-row">
+          <select id="drawerLeadColuna" class="drawer-status-select" onchange="App.changeLeadStageFromDrawer(this.value)">
+            <option value="novos">📥 Novos Leads</option>
+            <option value="contatado">💬 Em Contato</option>
+            <option value="negociacao">🤝 Negociação</option>
+            <option value="fechado">🎉 Fechado</option>
+            <option value="perdido">❌ Perdido</option>
+          </select>
+          <span id="drawerLeadSituacao" class="badge-tag" style="background:rgba(37,208,126,0.15); color:var(--live); border:1px solid rgba(37,208,126,0.3);">ATIVA</span>
+          <span id="drawerLeadPorte" class="badge-tag">ME</span>
+          <span class="badge-tag" style="background:rgba(127,196,255,0.1); color:var(--sky); border:1px solid rgba(127,196,255,0.25); font-size:11px;">🏛️ Dados Reais RFB</span>
+        </div>
+        <button class="drawer-close" onclick="App.closeLeadDetails()" title="Fechar Raio-X">&times;</button>
+      </div>
+
+      <div class="drawer-title-group">
+        <h2 id="drawerLeadRazao">Razão Social da Empresa</h2>
+        <div id="drawerLeadFantasia" class="drawer-subtitle">Nome Fantasia</div>
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <div class="drawer-cnpj-pill">
+          <span id="drawerLeadCnpj">00.000.000/0001-00</span>
+          <button type="button" class="btn btn-quiet btn-xs" onclick="App.copyLeadCnpj()" title="Copiar CNPJ">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Copiar
+          </button>
+        </div>
+        <div id="drawerLeadDataAbertura" style="font-size:12px; color:var(--sky);">Abertura: —</div>
+      </div>
+    </div>
+
+    <div class="drawer-body">
+      <!-- Ações Rápidas de Contato -->
+      <div class="drawer-quick-actions">
+        <button type="button" id="drawerBtnWa" class="btn btn-whatsapp" style="justify-content:center; font-weight:600;" onclick="App.triggerDrawerWa()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          Chamar WhatsApp
+        </button>
+        <button type="button" id="drawerBtnCall" class="btn btn-quiet" style="justify-content:center;" onclick="App.copyLeadPhone()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+          <span id="drawerLeadTelefoneQuick">Telefone</span>
+        </button>
+      </div>
+
+      <!-- Presença Digital & Redes Sociais (Conforme Solicitado: Perfil do Google, Redes Sociais, Links) -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          Presença Digital & Investigação Online
+        </div>
+        <div class="digital-presence-grid">
+          <a id="linkGoogleMaps" href="#" target="_blank" class="digital-link-btn" title="Ver perfil ou localização no Google Maps">
+            <div class="digital-link-icon icon-maps">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+            </div>
+            <span>Perfil Google / Maps</span>
+          </a>
+
+          <a id="linkGoogleSearch" href="#" target="_blank" class="digital-link-btn" title="Pesquisar empresa no Google">
+            <div class="digital-link-icon icon-google">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+            </div>
+            <span>Busca no Google</span>
+          </a>
+
+          <a id="linkInstagram" href="#" target="_blank" class="digital-link-btn" title="Buscar perfil no Instagram">
+            <div class="digital-link-icon icon-instagram">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+            </div>
+            <span>Instagram</span>
+          </a>
+
+          <a id="linkLinkedInEmpresa" href="#" target="_blank" class="digital-link-btn" title="Buscar página da empresa no LinkedIn">
+            <div class="digital-link-icon icon-linkedin">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+            </div>
+            <span>LinkedIn Empresa</span>
+          </a>
+
+          <a id="linkLinkedInSocios" href="#" target="_blank" class="digital-link-btn" title="Buscar perfil dos sócios no LinkedIn">
+            <div class="digital-link-icon icon-linkedin">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            </div>
+            <span>LinkedIn dos Sócios</span>
+          </a>
+
+          <a id="linkFacebook" href="#" target="_blank" class="digital-link-btn" title="Buscar no Facebook">
+            <div class="digital-link-icon icon-facebook">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            </div>
+            <span>Facebook</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Contato & Responsável -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          Contato Principal & Responsável
+        </div>
+        <div class="drawer-card">
+          <div class="info-grid-2">
+            <div class="info-row">
+              <span class="info-label">Contato Declarado</span>
+              <b id="drawerLeadContato" class="info-value">—</b>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Cargo / Qualificação</span>
+              <span id="drawerLeadCargo" class="info-value" style="color:var(--sky);">—</span>
+            </div>
+          </div>
+          <div class="info-grid-2" style="border-top: 1px solid rgba(127, 196, 255, 0.1); padding-top: 10px;">
+            <div class="info-row">
+              <span class="info-label">Telefone Comercial</span>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <b id="drawerLeadTelefone" class="info-value" style="font-family:var(--mono);">—</b>
+                <button type="button" class="btn btn-quiet btn-xs" onclick="App.copyLeadPhone()" title="Copiar número">Copiar</button>
+              </div>
+            </div>
+            <div class="info-row">
+              <span class="info-label">E-mail Cadastrado</span>
+              <span id="drawerLeadEmail" class="info-value" style="font-size:12px; word-break:break-all;">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quadro Societário (QSA) -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          Quadro de Sócios e Administradores (QSA)
+        </div>
+        <div id="drawerLeadQsaList" style="display:flex; flex-direction:column; gap:8px;">
+          <!-- Renderizado via JS -->
+        </div>
+      </div>
+
+      <!-- Localização & Endereço Completo -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+          Endereço Comercial Oficial
+        </div>
+        <div class="drawer-card">
+          <div class="info-row">
+            <span class="info-label">Endereço</span>
+            <div id="drawerLeadEndereco" class="info-value" style="font-size:13.5px; line-height:1.4;">—</div>
+          </div>
+          <div class="info-grid-2" style="border-top: 1px solid rgba(127, 196, 255, 0.1); padding-top: 10px;">
+            <div class="info-row">
+              <span class="info-label">Município / UF</span>
+              <span id="drawerLeadCidadeUf" class="info-value" style="color:var(--sky); font-weight:600;">—</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">CEP</span>
+              <span id="drawerLeadCep" class="info-value" style="font-family:var(--mono);">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Raio-X Econômico & Fiscal -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+          Dados Econômicos & Fiscais (Receita Federal)
+        </div>
+        <div class="drawer-card">
+          <div class="info-row">
+            <span class="info-label">CNAE Principal</span>
+            <div id="drawerLeadCnae" class="info-value" style="font-size:13px; line-height:1.4;">—</div>
+          </div>
+          <div class="info-grid-2" style="border-top: 1px solid rgba(127, 196, 255, 0.1); padding-top: 10px;">
+            <div class="info-row">
+              <span class="info-label">Capital Social</span>
+              <b id="drawerLeadCapital" class="info-value" style="color:#fff; font-size:15px;">R$ —</b>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Natureza Jurídica</span>
+              <span id="drawerLeadNatureza" class="info-value" style="font-size:12px;">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bloco de Notas Internas -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          Bloco de Notas & Observações do Lead
+        </div>
+        <div class="drawer-card">
+          <textarea id="drawerLeadNotasInput" class="notes-textarea" placeholder="Digite anotações sobre negociação, preferências do cliente, propostas enviadas..."></textarea>
+          <div style="display:flex; justify-content:flex-end;">
+            <button type="button" class="btn btn-solid btn-sm" onclick="App.saveLeadNotesFromDrawer()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              Salvar Anotações
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Histórico de Atividades & Linha do Tempo -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          Linha do Tempo de Atividades
+        </div>
+        <div class="drawer-card">
+          <div id="drawerLeadTimeline" class="timeline-feed">
+            <!-- Entradas da linha do tempo -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rodapé da Gaveta -->
+    <div class="drawer-footer">
+      <button type="button" class="btn btn-quiet btn-sm" style="color:var(--danger); border-color:rgba(255,87,87,0.3);" onclick="App.deleteLeadFromDrawer()" title="Remover lead do CRM">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        Excluir Lead
+      </button>
+      <button type="button" class="btn btn-solid btn-sm" onclick="App.closeLeadDetails()">
+        Fechar Raio-X
+      </button>
+    </div>
+  </aside>
+
+  <!-- Toast Notification -->
+  <div id="toastNotification" class="toast-msg"></div>
+
+  <script src="/js/globe.js"></script>
+  <script src="/js/app.js?v=3"></script>
+</body>
+</html>

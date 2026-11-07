@@ -1,0 +1,8 @@
+node_modules/
+*.mp4
+.vercel/
+.env
+.env.local
+Thumbs.db
+.DS_Store
+npm-debug.log*
