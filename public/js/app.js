@@ -75,7 +75,7 @@ const LocalStore = {
         data: new Date().toLocaleString('pt-BR')
       });
       localStorage.setItem(this.KEYS.HISTORICO, JSON.stringify(all.slice(0, 1000)));
-    } catch (e) {}
+    } catch (e) { }
   },
 
   getHistoricoBuscas() {
@@ -653,7 +653,7 @@ const App = {
           method: radarId ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
-        }).catch(() => {});
+        }).catch(() => { });
 
         this.closeModal('modalNovoRadar');
         this.showToast(radarId ? 'Radar atualizado com sucesso!' : 'Radar configurado com sucesso!');
@@ -738,7 +738,7 @@ const App = {
     const renderList = (filtro = '') => {
       const termo = filtro.trim().toLowerCase();
       const filtrados = estados.filter(e => e.sigla.toLowerCase().includes(termo) || e.nome.toLowerCase().includes(termo));
-      
+
       listContainer.innerHTML = filtrados.map(e => `
         <label class="uf-option-item">
           <input type="checkbox" value="${e.sigla}" ${this.selectedSearchUfs.has(e.sigla) ? 'checked' : ''} onchange="App.toggleSearchUf('${e.sigla}', this.checked)">
@@ -917,7 +917,7 @@ const App = {
 
     const tbody = document.getElementById('searchResultsTbody');
     const countEl = document.getElementById('searchResultsCount');
-    if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px;">Carregando empresas...</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px;">Carregando empresas...</td></tr>`;
 
     try {
       const res = await fetch(`/api/pesquisa?${queryParams.toString()}`);
@@ -933,7 +933,7 @@ const App = {
       if (countEl) countEl.textContent = `${data.total.toLocaleString('pt-BR')} empresas encontradas`;
 
       if (!data.empresas.length) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--ink-3);">Nenhuma empresa encontrada com estes critérios.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--ink-3);">Nenhuma empresa encontrada com estes critérios.</td></tr>`;
         return;
       }
 
@@ -968,15 +968,68 @@ const App = {
     }
   },
 
+  formatarDataEAbertura(dataAberturaRaw) {
+    if (!dataAberturaRaw) {
+      return { dataFormatada: '—', tempoRelativo: 'Não informada' };
+    }
+
+    let ano, mes, dia;
+    const str = String(dataAberturaRaw).trim();
+    if (str.includes('-')) {
+      const parts = str.split('T')[0].split('-');
+      ano = parseInt(parts[0], 10);
+      mes = parseInt(parts[1], 10) - 1;
+      dia = parseInt(parts[2], 10);
+    } else if (str.includes('/')) {
+      const parts = str.split('/');
+      dia = parseInt(parts[0], 10);
+      mes = parseInt(parts[1], 10) - 1;
+      ano = parseInt(parts[2], 10);
+    }
+
+    if (!ano || isNaN(ano)) {
+      return { dataFormatada: str, tempoRelativo: '' };
+    }
+
+    const dataAbertura = new Date(ano, mes, dia);
+    const dataHoje = new Date();
+    dataHoje.setHours(0, 0, 0, 0);
+
+    const diffMs = dataHoje - dataAbertura;
+    const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    const pad = n => String(n).padStart(2, '0');
+    const dataFormatada = `${pad(dia)}/${pad(mes + 1)}/${ano}`;
+
+    let tempoRelativo = '';
+    if (diffDias <= 0) {
+      tempoRelativo = 'Aberta hoje';
+    } else if (diffDias === 1) {
+      tempoRelativo = 'Aberta ontem';
+    } else if (diffDias < 30) {
+      tempoRelativo = `Aberta há ${diffDias} dias`;
+    } else if (diffDias < 365) {
+      const meses = Math.floor(diffDias / 30);
+      tempoRelativo = meses <= 1 ? 'Aberta há 1 mês' : `Aberta há ${meses} meses`;
+    } else {
+      const anos = Math.floor(diffDias / 365);
+      tempoRelativo = anos <= 1 ? 'Aberta há 1 ano' : `Aberta há ${anos} anos`;
+    }
+
+    return { dataFormatada, tempoRelativo };
+  },
+
   renderSearchResultsTable(empresas) {
     const tbody = document.getElementById('searchResultsTbody');
     if (!tbody) return;
     if (!empresas || !empresas.length) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--ink-3);">Nenhuma empresa encontrada.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--ink-3);">Nenhuma empresa encontrada.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = empresas.map(emp => `
+    tbody.innerHTML = empresas.map(emp => {
+      const ab = this.formatarDataEAbertura(emp.data_abertura);
+      return `
       <tr>
         <td>
           <b style="color:#fff; display:block;">${emp.razao_social}</b>
@@ -991,6 +1044,13 @@ const App = {
             ${emp.cnae_descricao || 'Atividade não informada'}
           </span>
           <small style="color:var(--ink-3); font-family:var(--mono); font-size:10px;">CNAE ${emp.cnae_codigo || '—'}</small>
+        </td>
+        <td style="white-space: nowrap;">
+          <span style="color:#fff; font-weight:550; font-size:12px; font-variant-numeric:tabular-nums; display:flex; align-items:center; gap:5px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--sky); flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            ${ab.dataFormatada}
+          </span>
+          <small style="color:#25d07e; font-size:11px; font-weight:600; display:block; margin-top:2px;">${ab.tempoRelativo}</small>
         </td>
         <td>
           <span style="color:var(--ink-1); font-weight:550; font-variant-numeric:tabular-nums;">
@@ -1020,7 +1080,8 @@ const App = {
           </div>
         </td>
       </tr>
-    `).join('');
+      `;
+    }).join('');
   },
 
   // ==================== MÓDULO DE PASTAS & HISTÓRICO DE BUSCAS ====================
@@ -1252,7 +1313,8 @@ const App = {
       'CNAE Codigo',
       'CNAE Descricao',
       'Capital Social',
-      'Data Abertura'
+      'Data Abertura',
+      'Tempo de Abertura'
     ];
 
     const escapeCsv = (val) => {
@@ -1273,7 +1335,8 @@ const App = {
       escapeCsv(e.cnae_codigo || ''),
       escapeCsv(e.cnae_descricao || ''),
       escapeCsv(e.capital_social || 0),
-      escapeCsv(e.data_abertura || '')
+      escapeCsv(e.data_abertura || ''),
+      escapeCsv(this.formatarDataEAbertura(e.data_abertura).tempoRelativo)
     ].join(';'));
 
     const csvContent = '\uFEFF' + headers.join(';') + '\n' + rows.join('\n');
@@ -1558,7 +1621,8 @@ const App = {
       'CNAE Codigo',
       'CNAE Descricao',
       'Capital Social',
-      'Data Abertura'
+      'Data Abertura',
+      'Tempo de Abertura'
     ];
 
     const escapeCsv = (val) => {
@@ -1579,7 +1643,8 @@ const App = {
       escapeCsv(e.cnae_codigo || ''),
       escapeCsv(e.cnae_descricao || ''),
       escapeCsv(e.capital_social || 0),
-      escapeCsv(e.data_abertura || '')
+      escapeCsv(e.data_abertura || ''),
+      escapeCsv(this.formatarDataEAbertura(e.data_abertura).tempoRelativo)
     ].join(';'));
 
     const csvContent = '\uFEFF' + headers.join(';') + '\n' + rows.join('\n');
@@ -1756,7 +1821,7 @@ const App = {
       document.getElementById('fichaCapital').textContent = `R$ ${Number(emp.capital_social || 0).toLocaleString('pt-BR')}`;
       document.getElementById('fichaPorte').textContent = emp.porte || 'Não informado';
       document.getElementById('fichaCnae').textContent = emp.cnae_codigo ? `${emp.cnae_codigo} - ${emp.cnae_descricao || ''}` : 'Não informado';
-      
+
       const endFicha = [emp.logradouro, emp.numero, emp.bairro, emp.municipio ? `${emp.municipio}/${emp.uf || ''}` : ''].filter(Boolean).join(' - ');
       document.getElementById('fichaEndereco').textContent = endFicha || 'Endereço não informado na Receita Federal';
       document.getElementById('fichaTelefone').textContent = emp.telefone || 'Informação não informada na Receita Federal';
@@ -2028,7 +2093,7 @@ const App = {
         if (data.success && data.empresa) {
           emp = { ...lead, ...data.empresa };
         }
-      } catch (e) {}
+      } catch (e) { }
 
       const historico = LocalStore.getHistorico(lead.id);
       this.renderDrawerData(emp, lead, historico);
