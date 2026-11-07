@@ -500,6 +500,7 @@ function expandirTermoCnae(termo) {
   const t = termo.toLowerCase().trim();
   if (t.includes('odonto') || t.includes('dentista')) return 'odonto';
   if (t.includes('medic') || t.includes('médic') || t.includes('clinica') || t.includes('clínica')) return 'médic';
+  if (t.includes('estet') || t.includes('estét') || t.includes('beleza')) return 'estet';
   if (t.includes('software') || t.includes('program') || t.includes('ti')) return 'computad';
   if (t.includes('restauran') || t.includes('bar') || t.includes('lanchon')) return 'restauran';
   if (t.includes('contab') || t.includes('fiscal')) return 'contab';

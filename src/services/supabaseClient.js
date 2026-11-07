@@ -38,6 +38,11 @@ if (SUPABASE_URL && SUPABASE_KEY) {
   });
 }
 
+function stripAccents(str) {
+  if (!str) return '';
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 /**
  * Pesquisa empresas no Supabase com suporte a múltiplos estados, CNAE, tempo de abertura, capital e celular
  */
@@ -53,14 +58,37 @@ async function pesquisarEmpresasSupabase(filtros = {}) {
         query = query.or(`cnpj.ilike.%${rawDigits}%,cnpj.ilike.%${filtros.termo}%`);
       } else {
         const t = filtros.termo.trim();
-        query = query.or(`razao_social.ilike.%${t}%,nome_fantasia.ilike.%${t}%,socio_nome.ilike.%${t}%`);
+        const tSem = stripAccents(t);
+        const orParts = [
+          `razao_social.ilike.%${t}%`,
+          `nome_fantasia.ilike.%${t}%`,
+          `socio_nome.ilike.%${t}%`
+        ];
+        if (tSem !== t) {
+          orParts.push(`razao_social.ilike.%${tSem}%`);
+          orParts.push(`nome_fantasia.ilike.%${tSem}%`);
+          orParts.push(`socio_nome.ilike.%${tSem}%`);
+        }
+        query = query.or(orParts.join(','));
       }
     }
 
-    // 2. CNAE / Atividade
+    // 2. CNAE / Atividade (com suporte a buscas acentuadas e sem acento)
     if (filtros.cnae && filtros.cnae.trim() !== '') {
       const c = filtros.cnae.trim();
-      query = query.or(`cnae_codigo.ilike.%${c}%,cnae_descricao.ilike.%${c}%,razao_social.ilike.%${c}%,nome_fantasia.ilike.%${c}%`);
+      const cSem = stripAccents(c);
+      const orParts = [
+        `cnae_codigo.ilike.%${c}%`,
+        `cnae_descricao.ilike.%${c}%`,
+        `razao_social.ilike.%${c}%`,
+        `nome_fantasia.ilike.%${c}%`
+      ];
+      if (cSem !== c) {
+        orParts.push(`cnae_descricao.ilike.%${cSem}%`);
+        orParts.push(`razao_social.ilike.%${cSem}%`);
+        orParts.push(`nome_fantasia.ilike.%${cSem}%`);
+      }
+      query = query.or(orParts.join(','));
     }
 
     // 3. Múltiplos Estados (UF)
